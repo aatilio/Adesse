@@ -118,19 +118,7 @@ app.post('/api/asistencias', async (req, res) => {
   }
 });
 
-// GET /api/asistencias/:sesion_id
-app.get('/api/asistencias/:sesion_id', async (req, res) => {
-  try {
-    const r = await pool.query(
-      `SELECT a.id, a.estado, a.fecha_hora, e.nombre_completo, e.codigo_estudiante
-       FROM asistencias a JOIN estudiantes e ON e.id = a.estudiante_id
-       WHERE a.sesion_id = $1 ORDER BY a.fecha_hora ASC`, [req.params.sesion_id]
-    );
-    res.json({ asistencias: r.rows });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
+
 
 // GET /api/estudiantes
 app.get('/api/estudiantes', async (req, res) => {
@@ -191,6 +179,20 @@ app.get('/api/asistencias/historial', async (req, res) => {
        ORDER BY a.fecha_hora DESC`
     );
     res.json({ historial: r.rows });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/asistencias/:sesion_id
+app.get('/api/asistencias/:sesion_id', async (req, res) => {
+  try {
+    const r = await pool.query(
+      `SELECT a.id, a.estado, a.fecha_hora, e.nombre_completo, e.codigo_estudiante
+       FROM asistencias a JOIN estudiantes e ON e.id = a.estudiante_id
+       WHERE a.sesion_id = $1 ORDER BY a.fecha_hora ASC`, [req.params.sesion_id]
+    );
+    res.json({ asistencias: r.rows });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
