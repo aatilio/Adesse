@@ -1,13 +1,82 @@
-# React + Vite
+# Sistema de Asistencia Inteligente (SAI) 🎓
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Una aplicación web moderna diseñada para registrar, controlar y gestionar de manera interactiva la asistencia de estudiantes en tiempo real. 
 
-Currently, two official plugins are available:
+Este proyecto fue estructurado bajo un enfoque *Mobile-First* pensando en la facilidad para que los alumnos confirmen su presencia escaneando un código QR dinámico proveído por el docente. Todo el sistema está orquestado mediante **Docker**, aislando de forma segura la Base de Datos, el API Backend y el Frontend.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+## 🚀 Características Principales
 
-## Expanding the ESLint configuration
+* **Control de Horario Dinámico:** El sistema bloquea inteligentemente la selección de asistencia garantizando reglas estrictas:
+  * *(6:30 AM a 6:59 AM)* -> **Puntual**
+  * *(7:00 AM a 7:20 AM)* -> **Presente**
+  * *(7:21 AM a 8:20 AM)* -> **Tarde**
+  * Fuera de estos horarios -> Registro de asistencia deshabilitado.
+* **Escaneo de Código QR Activo:** En lugar de ser un simple pase de lista fijo, la pantalla del profesor genera códigos interactivos (JWT) renovables cada 15 segundos, impidiendo que el alumno haga fraude con fotos de códigos anteriores.
+* **Panel Docente en Tiempo Real:** 
+  * Ver quién llegó, con qué estado de asistencia de manera automática y a qué hora.
+  * Modificar o justificar asistencias.
+  * Modificar directamente nombres o CI/CUI del alumnado sin necesidad de consultas manuales.
+* **Modo Offline/Prueba Integrado:** Permite a los programadores interactuar con el escáner haciendo bypass local sin requerir de dos cámaras 🧪.
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
-# Adesse
+## 🛠️ Stack Tecnológico
+
+La aplicación está construida sobre un stack moderno y eficiente:
+* **Frontend:** React + Vite (Alojado en Node.js, interactivo mediante CSS Moderno).
+* **Backend:** Express API + Node.js
+* **Base de Datos:** PostgreSQL
+* **Contenedores:** Docker + Docker Compose, adicional pgAdmin opcional.
+* **Librerías Adicionales:** Lucide-react (Íconos), QRCode (Generador QR interactivo), JsonWebToken (Cifrado).
+
+## 🎮 Guía de Inicio (Local)
+
+Al usar Docker Compose, correr la aplicación completa requiere un solo comando.
+
+1. Instala [Docker](https://www.docker.com/).
+2. Clona este proyecto o sitúate en la raíz.
+3. Levanta los servicios escribiendo:
+   ```bash
+   docker compose up -d --build
+   ```
+
+Una vez completado el progreso, tendrás disponibles los servicios en tu navegador en:
+* **Frontend Web (SAI):** `http://localhost:5173`
+* **Backend API (Opcional):** `http://localhost:3000`
+* **pgAdmin (DB Viewer):** `http://localhost:8080` (Email: `admin@admin.com` - Pass: `admin`)
+
+## 🙋‍♂️ Cómo se usa
+
+1. **Si eres Docente:**
+   * Haz click en el Tab "Profesor" e inicia sesión con el código: **PROF01**.
+   * Crea una nueva Sesión de clases. Automáticamente se generará un gran código QR en tu pantalla. Déjalo a la vista de tus alumnos.
+   * Haz seguimiento en tiempo real quién se ha registrado. 
+
+2. **Si eres Alumno:**
+   * Inicia sesión con alguno de los códigos CUI matriculados *(Por ej. ALU001 o 20241417)*.
+   * Dependiendo de la hora a la que entres, escoge tu estado disponible e inicia el escáner QR de tu celular.
+
+## 📁 Estructura del Proyecto
+
+```text
+asistencia-app/
+├── backend/                # API Express + Lógica DB
+│   ├── Dockerfile          # Configuración de imagen de backend
+│   ├── index.js            # Punto de entrada de la API
+│   ├── init.sql            # Esquema y semillas de PostgreSQL
+│   └── package.json        # Dependencias del backend
+├── src/                    # Aplicación React (Frontend)
+│   ├── api/                # Cliente para peticiones HTTP
+│   ├── components/         # Componentes UI (QR, Tablas, Toast)
+│   ├── pages/              # Vistas completas (Login, Alumno, Profesor)
+│   ├── App.jsx             # Enrutador y gestión de sesiones
+│   ├── main.jsx            # Punto de entrada de React
+│   └── index.css           # Sistema de diseño y estilos globales
+├── .gitignore              # Archivos excluidos de Git
+├── docker-compose.yml      # Orquestación de contenedores
+└── README.md               # Documentación general
+```
+
+## 🗄️ Esquema DB
+
+* `estudiantes`: Tabla base del alumnado.
+* `sesiones_clase`: Manejo de clases abiertas, cerradas y llaves temporales QR.
+* `asistencias`: Tabla principal referencial que documenta Estado y Hora entre cada sesión/alumno.

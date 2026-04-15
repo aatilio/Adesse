@@ -1,0 +1,82 @@
+services:
+  # Base de Datos
+  db:
+    image: postgres:15-alpine
+    container_name: asistencia_postgres
+    restart: always
+    environment:
+      POSTGRES_USER: root
+      POSTGRES_PASSWORD: rootpassword
+      POSTGRES_DB: asistenciadb
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./backend/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - asistencia-net
+
+  # Mini Backend (Express)
+  api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: asistencia_api
+    restart: always
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+    environment:
+      - DB_HOST=db
+      - DB_USER=root
+      - DB_PASSWORD=rootpassword
+      - DB_NAME=asistenciadb
+      - DB_PORT=5432
+    depends_on:
+      - db
+    networks:
+      - asistencia-net
+
+  # Frontend (React)
+  asistencia-frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: asistencia_react_vite
+    ports:
+      - "5173:5173"
+    volumes:
+      - .:/app
+      - /app/node_modules
+    environment:
+      - VITE_API_URL=http://localhost:3000
+    stdin_open: true
+    tty: true
+    depends_on:
+      - api
+    networks:
+      - asistencia-net
+
+  # pgAdmin (Interfaz visual para PostgreSQL)
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: asistencia_pgadmin
+    restart: always
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@admin.com
+      PGADMIN_DEFAULT_PASSWORD: admin
+    ports:
+      - "8080:80"
+    depends_on:
+      - db
+    networks:
+      - asistencia-net
+
+networks:
+  asistencia-net:
+    driver: bridge
+
+volumes:
+  pgdata:

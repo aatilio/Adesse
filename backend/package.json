@@ -1,0 +1,17 @@
+{
+  "name": "asistencia-api",
+  "version": "2.0.0",
+  "description": "Backend API for Sistema de Asistencia Inteligente",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "node --watch index.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.21.2",
+    "jsonwebtoken": "^9.0.2",
+    "pg": "^8.13.1"
+  }
+}
