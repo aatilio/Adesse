@@ -172,7 +172,7 @@ app.get('/api/asistencias/alumno/:id', async (req, res) => {
 app.get('/api/asistencias/historial', async (req, res) => {
   try {
     const r = await pool.query(
-      `SELECT a.id, a.estado, a.fecha_hora, e.nombre_completo, e.codigo_estudiante, s.nombre_clase
+      `SELECT a.id, a.estado, a.fecha_hora, a.sesion_id, a.estudiante_id, e.nombre_completo, e.codigo_estudiante, s.nombre_clase
        FROM asistencias a
        JOIN estudiantes e ON e.id = a.estudiante_id
        JOIN sesiones_clase s ON s.id = a.sesion_id
@@ -193,6 +193,20 @@ app.get('/api/asistencias/:sesion_id', async (req, res) => {
        WHERE a.sesion_id = $1 ORDER BY a.fecha_hora ASC`, [req.params.sesion_id]
     );
     res.json({ asistencias: r.rows });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/asistencias/manual
+app.post('/api/asistencias/manual', async (req, res) => {
+  const { estudiante_id, sesion_id, estado } = req.body;
+  try {
+    const r = await pool.query(
+      'INSERT INTO asistencias (estudiante_id, sesion_id, estado) VALUES ($1, $2, $3) RETURNING *',
+      [estudiante_id, sesion_id, estado]
+    );
+    res.json({ asistencia: r.rows[0] });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

@@ -32,7 +32,11 @@ export default function TeacherPage({ user, onLogout }) {
     if (activeTab === 'alumnos') {
       api.getEstudiantes().then(res => setEstudiantes(res.estudiantes));
     } else if (activeTab === 'historial') {
-      api.getHistorialGeneral().then(res => setHistorialGen(res.historial));
+      // Necesitamos la lista de todos los estudiantes para la matriz
+      Promise.all([api.getHistorialGeneral(), api.getEstudiantes()]).then(([resH, resE]) => {
+         setHistorialGen(resH.historial);
+         setEstudiantes(resE.estudiantes);
+      });
     } else if (activeTab === 'config') {
       api.getConfiguracion().then(res => setConfig(res.config));
     }
@@ -87,9 +91,21 @@ export default function TeacherPage({ user, onLogout }) {
     try {
       await api.updateAsistencia(id, { estado });
       setHistorialGen(prev => prev.map(a => a.id === id ? { ...a, estado } : a));
-      toast.success('Estado actualizado correctamente');
+      toast.success('Estado actualizado');
     } catch {
       toast.error('Error al actualizar estado');
+    }
+  };
+
+  const createAsistenciaManual = async (estudiante_id, sesion_id, estado) => {
+    try {
+      const { asistencia } = await api.crearAsistenciaManual({ estudiante_id, sesion_id, estado });
+      // Reload historial to get the JOINed fields (like nombre_clase, etc)
+      const res = await api.getHistorialGeneral();
+      setHistorialGen(res.historial);
+      toast.success('Asistencia registrada manualmente');
+    } catch {
+      toast.error('Error al registrar asistencia');
     }
   };
 
@@ -224,36 +240,89 @@ export default function TeacherPage({ user, onLogout }) {
           </div>
         )}
 
-        {/* VIEW: HISTORIAL */}
+        {/* VIEW: HISTORIAL (MATRIZ EXCEL) */}
         {activeTab === 'historial' && (
-           <div className="card">
-             <div className="card-title">Registro Histórico Completo</div>
-             <div className="card-subtitle">Revisa las clases pasadas y corrige los estados (Ej. Cambiar Falta Injustificada a Justificado).</div>
+           <div className="card" style={{ maxWidth: '100%', overflow: 'hidden' }}>
+             <div className="card-title">Matriz de Asistencias</div>
+             <div className="card-subtitle">Vista acumulada. Escoge el estado de la celda para modificarlo (P=Puntual, Pr=Presente, T=Tarde, J=Justificado, F=Falgo).</div>
 
-             {historialGen.length === 0 ? <p className="text-muted">No hay registros históricos.</p> : (
-               <div style={{ display: 'flex', flexDirection: 'column' }}>
-                 {historialGen.map(ast => (
-                    <div key={ast.id} className="editable-row" style={{ gridTemplateColumns: 'minmax(150px,2fr) 1.5fr 1fr' }}>
-                      <div style={{ display:'flex', flexDirection:'column' }}>
-                        <strong style={{ fontSize: 'var(--text-sm)' }}>{ast.nombre_completo}</strong>
-                        <span style={{ fontSize: 'var(--text-xs)', color: 'var(--gray-500)' }}>{ast.nombre_clase} • {fmtFecha(ast.fecha_hora)}</span>
-                      </div>
-                      <select 
-                        defaultValue={ast.estado} 
-                        onChange={(e) => updateAsistenciaEstado(ast.id, e.target.value)}
-                        style={{ fontWeight: '600' }}
-                      >
-                        <option value="Puntual">Puntual</option>
-                        <option value="Presente">Presente</option>
-                        <option value="Tarde">Tarde</option>
-                        <option value="Justificado">Justificado</option>
-                        <option value="Falto">Falto (Manual)</option>
-                      </select>
-                      <div>
-                        {/* Empty right column for balance */}
-                      </div>
-                    </div>
-                 ))}
+             {historialGen.length === 0 ? <p className="text-muted" style={{marginTop:'1rem'}}>No hay clases o registros aún.</p> : (
+               <div style={{ overflowX: 'auto', marginTop: '1rem', border: '1px solid var(--gray-200)', borderRadius: '6px' }}>
+                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem', textAlign: 'center' }}>
+                   <thead>
+                     <tr style={{ background: 'var(--gray-50)' }}>
+                       <th style={{ padding: '10px 12px', borderBottom: '2px solid var(--gray-200)', textAlign: 'left', minWidth: '180px' }}>Estudiante</th>
+                       {(() => {
+                          const clsMap = new Map();
+                          historialGen.forEach(a => {
+                             const dt = new Date(a.fecha_hora);
+                             clsMap.set(a.sesion_id, {
+                               id: a.sesion_id, name: a.nombre_clase, dt: dt.getTime(),
+                               label: dt.toLocaleDateString('es-MX', { day:'2-digit', month:'2-digit' })
+                             });
+                          });
+                          const columns = Array.from(clsMap.values()).sort((a,b) => a.dt - b.dt);
+                          window._clasesColumnsTemp = columns;
+                          return columns.map(c => (
+                            <th key={c.id} style={{ padding: '8px 4px', borderBottom: '2px solid var(--gray-200)', minWidth: '50px' }}>
+                               <div style={{ fontSize: '0.75rem', color: 'var(--primary)' }}>{c.label}</div>
+                            </th>
+                          ));
+                       })()}
+                       <th style={{ padding: '10px 12px', borderBottom: '2px solid var(--gray-200)', background: 'var(--blue-50)', color: 'var(--blue-600)' }}>Puntualidad</th>
+                     </tr>
+                   </thead>
+                   <tbody>
+                     {estudiantes.filter(e => e.codigo_estudiante !== 'PROF01').map((est, i) => {
+                        const recs = historialGen.filter(h => h.estudiante_id === est.id);
+                        const points = recs.filter(h => h.estado === 'Puntual' || h.estado === 'Presente').length;
+                        
+                        return (
+                          <tr key={est.id} style={{ borderBottom: '1px solid var(--gray-100)', background: i % 2 === 0 ? '#fff' : '#fafafa' }}>
+                             <td style={{ padding: '8px 12px', textAlign: 'left', display: 'flex', flexDirection: 'column' }}>
+                               <span style={{ fontWeight: '500', color: 'var(--gray-800)', fontSize: '0.8rem' }}>{est.nombre_completo}</span>
+                               <span style={{ fontSize: '0.7rem', color: 'var(--gray-500)' }}>{est.codigo_estudiante}</span>
+                             </td>
+                             {(window._clasesColumnsTemp || []).map(c => {
+                                const r = recs.find(h => h.sesion_id === c.id);
+                                const currentStatus = r ? r.estado : '';
+                                const colors = { Puntual: '#10b981', Presente: '#3b82f6', Tarde: '#f97316', Justificado: '#86efac', Falto: '#ef4444' };
+                                const shorts = { Puntual: 'P', Presente: 'Pr', Tarde: 'T', Justificado: 'J', Falto: 'F' };
+                                
+                                return (
+                                  <td key={c.id} style={{ padding: 0, borderLeft: '1px solid var(--gray-100)' }}>
+                                    <select
+                                       value={currentStatus}
+                                       onChange={(e) => {
+                                          if (!e.target.value) return;
+                                          if (r) updateAsistenciaEstado(r.id, e.target.value);
+                                          else createAsistenciaManual(est.id, c.id, e.target.value);
+                                       }}
+                                       style={{
+                                          width: '100%', height: '36px', appearance: 'none', border: 'none', background: 'transparent',
+                                          textAlign: 'center', cursor: 'pointer', outline: 'none',
+                                          fontWeight: '800', fontSize: '0.85rem', color: currentStatus ? colors[currentStatus] : 'var(--gray-300)'
+                                       }}
+                                    >
+                                       <option value="" disabled>-</option>
+                                       {Object.keys(shorts).map(k => <option key={k} value={k} style={{ color: colors[k], fontWeight: 'bold' }}>{shorts[k]}</option>)}
+                                    </select>
+                                  </td>
+                                );
+                             })}
+                             <td style={{ padding: '8px', fontWeight: 'bold', borderLeft: '1px solid var(--gray-200)', background: 'var(--blue-50)' }}>{points}</td>
+                          </tr>
+                        );
+                     })}
+                   </tbody>
+                 </table>
+                 <div style={{ padding: '12px', fontSize: '0.75rem', color: 'var(--gray-500)', display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+                    <span><strong style={{color:'#10b981'}}>P</strong>=Puntual</span>
+                    <span><strong style={{color:'#3b82f6'}}>Pr</strong>=Presente</span>
+                    <span><strong style={{color:'#f97316'}}>T</strong>=Tarde</span>
+                    <span><strong style={{color:'#86efac'}}>J</strong>=Justificado</span>
+                    <span><strong style={{color:'#ef4444'}}>F</strong>=Falto</span>
+                 </div>
                </div>
              )}
            </div>
