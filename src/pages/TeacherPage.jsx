@@ -14,6 +14,7 @@ export default function TeacherPage({ user, onLogout }) {
 
   // ── Tab state ───────────────────────────────────────────
   const [activeTab, setActiveTab] = useState('vivo'); // vivo | alumnos | clases | historial | config
+  const [viewMode, setViewMode]   = useState('dashboard'); // dashboard | curso
 
   // ── Live session ────────────────────────────────────────
   const [sesion, setSesion]         = useState(null);
@@ -89,6 +90,7 @@ export default function TeacherPage({ user, onLogout }) {
       setCursoActivo(curso);
       setNewCursoName('');
       setShowNewCurso(false);
+      setViewMode('curso');
       toast.success(`Curso "${curso.nombre}" creado`);
     } catch (err) { toast.error(err.message); }
   };
@@ -270,57 +272,74 @@ export default function TeacherPage({ user, onLogout }) {
         </button>
       </div>
 
-      {/* Course Selector Bar */}
-      <div style={{
-        display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.75rem 1rem',
-        background: 'white', borderRadius: '8px', marginBottom: '0.5rem', boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
-        flexWrap: 'wrap'
-      }}>
-        <BookOpen size={18} style={{ color: 'var(--primary)', flexShrink: 0 }} />
-        <select
-          value={cursoActivo?.id || ''}
-          onChange={e => {
-            const c = cursos.find(c => c.id === Number(e.target.value));
-            setCursoActivo(c);
-          }}
-          style={{
-            flex: 1, minWidth: '150px', padding: '8px 12px', borderRadius: '6px',
-            border: '1px solid var(--gray-200)', fontSize: '0.9rem', fontWeight: '600'
-          }}
-        >
-          {cursos.length === 0 && <option value="">Sin cursos — crea uno</option>}
-          {cursos.map(c => (
-            <option key={c.id} value={c.id}>{c.nombre} ({c.total_alumnos} alumnos, {c.total_clases} clases)</option>
-          ))}
-        </select>
-
-        {!showNewCurso ? (
-          <button className="btn btn-primary btn-sm" onClick={() => setShowNewCurso(true)} style={{ whiteSpace: 'nowrap' }}>
-            <Plus size={14} /> Nuevo Curso
-          </button>
-        ) : (
-          <form onSubmit={crearCurso} style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-            <input
-              type="text" placeholder="Nombre del curso" autoFocus value={newCursoName}
-              onChange={e => setNewCursoName(e.target.value)}
-              style={{ padding: '6px 10px', borderRadius: '6px', border: '1px solid var(--gray-300)', fontSize: '0.85rem' }}
-            />
-            <button className="btn btn-primary btn-sm" type="submit">Crear</button>
-            <button type="button" className="btn btn-sm btn-ghost" onClick={() => setShowNewCurso(false)}><X size={14} /></button>
-          </form>
-        )}
-
-        {cursoActivo && (
-          <button className="btn btn-sm btn-ghost" onClick={() => eliminarCurso(cursoActivo.id)}
-            style={{ color: 'var(--danger)', padding: '4px 8px' }} title="Eliminar curso">
-            <Trash2 size={14} />
-          </button>
-        )}
-      </div>
-
-      {/* Tabs */}
-      {cursoActivo && (
+      {/* DASHBOARD: Grid of Courses */}
+      {viewMode === 'dashboard' ? (
+        <div style={{ padding: '1rem 0' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
+            <h2 style={{ fontSize: '1.2rem', margin: 0, color: 'var(--gray-800)' }}>Mis Cursos</h2>
+            {!showNewCurso ? (
+              <button className="btn btn-primary" onClick={() => setShowNewCurso(true)}>
+                <Plus size={16} /> Crear Curso
+              </button>
+            ) : (
+              <form onSubmit={crearCurso} style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                <input
+                  type="text" placeholder="Nombre del curso" autoFocus value={newCursoName}
+                  onChange={e => setNewCursoName(e.target.value)}
+                  style={{ padding: '8px 12px', borderRadius: '6px', border: '1px solid var(--gray-300)' }}
+                />
+                <button className="btn btn-primary btn-sm" type="submit">Guardar</button>
+                <button type="button" className="btn btn-sm btn-ghost" onClick={() => setShowNewCurso(false)}><X size={16} /></button>
+              </form>
+            )}
+          </div>
+          
+          {cursos.length === 0 && !checking ? (
+            <div style={{ textAlign: 'center', padding: '3rem 1rem', color: 'var(--gray-500)', background: 'white', borderRadius: '8px', border: '1px dashed var(--gray-300)' }}>
+              <BookOpen size={48} style={{ margin: '0 auto 1rem', opacity: 0.3 }} />
+              <p>No tienes cursos. Crea tu primer curso para comenzar a gestionar asistencias.</p>
+            </div>
+          ) : (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '1rem' }}>
+              {cursos.map(c => (
+                <div key={c.id} className="card" style={{ cursor: 'pointer', transition: 'transform 0.2s', margin: 0 }} 
+                     onClick={() => { setCursoActivo(c); setViewMode('curso'); }}
+                     onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-2px)'}
+                     onMouseLeave={(e) => e.currentTarget.style.transform = 'none'}>
+                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                     <div>
+                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--primary)', marginBottom: '0.5rem' }}>
+                         <BookOpen size={18} />
+                         <span style={{ fontWeight: '500', fontSize: '0.85rem' }}>Curso</span>
+                       </div>
+                       <h3 style={{ fontSize: '1.1rem', margin: '0 0 0.5rem 0', color: 'var(--gray-800)' }}>{c.nombre}</h3>
+                     </div>
+                     <button className="btn btn-sm btn-ghost" onClick={(e) => { e.stopPropagation(); eliminarCurso(c.id); }}
+                       style={{ color: 'var(--danger)', padding: '4px' }} title="Eliminar curso">
+                       <Trash2 size={16} />
+                     </button>
+                   </div>
+                   <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem', fontSize: '0.85rem', color: 'var(--gray-500)' }}>
+                     <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><Users size={14} /> {c.total_alumnos} Alumnos</span>
+                     <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><Calendar size={14} /> {c.total_clases} Clases</span>
+                   </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      ) : (
         <>
+          {/* COURSE VIEW: Header & Tabs */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem', marginTop: '1rem' }}>
+            <button className="btn btn-sm btn-ghost" onClick={() => setViewMode('dashboard')} style={{ padding: '6px 10px', background: 'white', border: '1px solid var(--gray-200)' }}>
+               « Volver a Cursos
+            </button>
+            <h2 style={{ fontSize: '1.1rem', margin: 0, color: 'var(--gray-800)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <BookOpen size={18} style={{ color: 'var(--primary)' }} /> {cursoActivo?.nombre}
+            </h2>
+          </div>
+
           <div className="tabs" style={{ flexWrap: 'wrap' }}>
             <button className={`tab ${activeTab === 'vivo' ? 'active' : ''}`} onClick={() => setActiveTab('vivo')}>
               <Radio size={16} /> Monitor
@@ -510,23 +529,34 @@ export default function TeacherPage({ user, onLogout }) {
                       <tbody>
                         {estudiantesCurso.map((est, i) => {
                           const recs = historialGen.filter(h => h.estudiante_id === est.id);
-                          const points = recs.filter(h => h.estado === 'Puntual' || h.estado === 'Presente').length;
+                          const points = recs.reduce((acc, h) => {
+                            if (h.estado === 'Puntual') return acc + 2;
+                            if (h.estado === 'Presente') return acc + 1;
+                            if (h.estado === 'Justificado') return acc + 2;
+                            if (h.estado === 'Tarde') return acc + 1;
+                            return acc;
+                          }, 0);
+                          
                           return (
                             <tr key={est.id} style={{ borderBottom: '1px solid var(--gray-100)', background: i % 2 === 0 ? '#fff' : '#fafafa' }}>
                               <td style={{
                                 padding: '6px 10px', textAlign: 'left',
-                                position: 'sticky', left: 0, background: i % 2 === 0 ? '#fff' : '#fafafa', zIndex: 1
+                                position: 'sticky', left: 0, background: i % 2 === 0 ? '#fff' : '#fafafa', zIndex: 1,
+                                borderRight: '1px solid var(--gray-100)'
                               }}>
                                 <div style={{ display: 'flex', flexDirection: 'column' }}>
-                                  <span style={{ fontWeight: '500', color: 'var(--gray-800)', fontSize: '0.78rem' }}>{est.nombre_completo}</span>
+                                  <span style={{ fontWeight: '600', color: 'var(--gray-800)', fontSize: '0.78rem' }}>{est.nombre_completo}</span>
                                   <span style={{ fontSize: '0.68rem', color: 'var(--gray-400)' }}>{est.codigo_estudiante}</span>
                                 </div>
                               </td>
                               {clasesColumns.map(c => {
                                 const r = recs.find(h => h.sesion_id === c.id);
                                 const status = r ? r.estado : '';
+                                const bgColor = status ? COLORS[status] : 'transparent';
+                                const textColor = status ? '#fff' : 'var(--gray-300)';
+                                
                                 return (
-                                  <td key={c.id} style={{ padding: 0, borderLeft: '1px solid var(--gray-100)' }}>
+                                  <td key={c.id} style={{ padding: '2px', borderLeft: '1px solid var(--gray-100)', background: bgColor }}>
                                     <select
                                       value={status}
                                       onChange={(e) => {
@@ -535,14 +565,15 @@ export default function TeacherPage({ user, onLogout }) {
                                         else createAsistenciaManual(est.id, c.id, e.target.value);
                                       }}
                                       style={{
-                                        width: '100%', height: '34px', appearance: 'none', border: 'none', background: 'transparent',
-                                        textAlign: 'center', cursor: 'pointer', outline: 'none',
-                                        fontWeight: '800', fontSize: '0.85rem', color: status ? COLORS[status] : 'var(--gray-300)'
+                                        width: '100%', height: '30px', appearance: 'none', border: 'none', 
+                                        background: 'transparent', textAlign: 'center', cursor: 'pointer', 
+                                        outline: 'none', fontWeight: '900', fontSize: '0.85rem', 
+                                        color: textColor, borderRadius: '4px'
                                       }}
                                     >
-                                      <option value="" disabled>—</option>
+                                      <option value="" disabled style={{ color: '#000' }}>—</option>
                                       {Object.keys(SHORTS).map(k => (
-                                        <option key={k} value={k} style={{ color: COLORS[k], fontWeight: 'bold' }}>{SHORTS[k]}</option>
+                                        <option key={k} value={k} style={{ color: '#000', fontWeight: 'bold' }}>{SHORTS[k]}</option>
                                       ))}
                                     </select>
                                   </td>
@@ -550,7 +581,8 @@ export default function TeacherPage({ user, onLogout }) {
                               })}
                               <td style={{
                                 padding: '6px', fontWeight: 'bold', borderLeft: '2px solid var(--gray-200)',
-                                background: '#eff6ff', position: 'sticky', right: 0, zIndex: 1
+                                background: '#eff6ff', position: 'sticky', right: 0, zIndex: 1,
+                                color: 'var(--blue-700)', fontSize: '0.9rem'
                               }}>{points}</td>
                             </tr>
                           );
@@ -604,14 +636,6 @@ export default function TeacherPage({ user, onLogout }) {
 
           </div>
         </>
-      )}
-
-      {/* No course selected message */}
-      {!cursoActivo && !checking && (
-        <div style={{ textAlign: 'center', padding: '3rem 1rem', color: 'var(--gray-500)' }}>
-          <BookOpen size={48} style={{ margin: '0 auto 1rem', opacity: 0.3 }} />
-          <p>Crea tu primer curso para comenzar a gestionar asistencias.</p>
-        </div>
       )}
     </div>
   );

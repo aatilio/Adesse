@@ -10,7 +10,7 @@ CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 -- TABLA: estudiantes
 -- ============================================================
 CREATE TABLE estudiantes (
-  id                UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  id                SERIAL      PRIMARY KEY,
   codigo_estudiante TEXT        NOT NULL UNIQUE,
   nombre_completo   TEXT        NOT NULL,
   device_id         TEXT,
@@ -21,7 +21,7 @@ CREATE TABLE estudiantes (
 -- TABLA: cursos
 -- ============================================================
 CREATE TABLE cursos (
-  id          UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  id          SERIAL      PRIMARY KEY,
   nombre      VARCHAR(100) NOT NULL,
   descripcion TEXT         DEFAULT '',
   created_at  TIMESTAMPTZ  NOT NULL DEFAULT NOW()
@@ -31,9 +31,9 @@ CREATE TABLE cursos (
 -- TABLA: curso_estudiantes  (muchos a muchos)
 -- ============================================================
 CREATE TABLE curso_estudiantes (
-  id             UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  curso_id       UUID NOT NULL REFERENCES cursos(id) ON DELETE CASCADE,
-  estudiante_id  UUID NOT NULL REFERENCES estudiantes(id) ON DELETE CASCADE,
+  id             SERIAL PRIMARY KEY,
+  curso_id       INT NOT NULL REFERENCES cursos(id) ON DELETE CASCADE,
+  estudiante_id  INT NOT NULL REFERENCES estudiantes(id) ON DELETE CASCADE,
   UNIQUE(curso_id, estudiante_id)
 );
 
@@ -41,11 +41,11 @@ CREATE TABLE curso_estudiantes (
 -- TABLA: sesiones_clase
 -- ============================================================
 CREATE TABLE sesiones_clase (
-  id                UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  id                SERIAL      PRIMARY KEY,
   nombre_clase      TEXT        NOT NULL,
   token_qr          TEXT,
   activa            BOOLEAN     NOT NULL DEFAULT FALSE,
-  curso_id          UUID        REFERENCES cursos(id) ON DELETE SET NULL,
+  curso_id          INT         REFERENCES cursos(id) ON DELETE SET NULL,
   fecha_programada  TIMESTAMPTZ,
   fecha_inicio      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   created_at        TIMESTAMPTZ NOT NULL DEFAULT NOW()
@@ -55,9 +55,9 @@ CREATE TABLE sesiones_clase (
 -- TABLA: asistencias
 -- ============================================================
 CREATE TABLE asistencias (
-  id             UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
-  estudiante_id  UUID        NOT NULL REFERENCES estudiantes(id) ON DELETE CASCADE,
-  sesion_id      UUID        NOT NULL REFERENCES sesiones_clase(id) ON DELETE CASCADE,
+  id             SERIAL      PRIMARY KEY,
+  estudiante_id  INT         NOT NULL REFERENCES estudiantes(id) ON DELETE CASCADE,
+  sesion_id      INT         NOT NULL REFERENCES sesiones_clase(id) ON DELETE CASCADE,
   fecha_hora     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   estado         TEXT        NOT NULL DEFAULT 'Presente',
   UNIQUE(estudiante_id, sesion_id)
