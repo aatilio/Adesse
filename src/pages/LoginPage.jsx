@@ -45,8 +45,8 @@ export default function LoginPage({ onLogin }) {
             <ClipboardList size={30} />
           </div>
           <div>
-            <div className="login-logo-title">SAI</div>
-            <div className="login-logo-sub">Sistema de Asistencia Inteligente</div>
+            <div className="login-logo-title">ADESSE</div>
+            <div className="login-logo-sub">Asistencia Digital Estratégica para el Sector Educativo</div>
           </div>
         </div>
 

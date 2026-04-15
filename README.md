@@ -1,8 +1,8 @@
-# Sistema de Asistencia Inteligente (SAI) 🎓
+# ADESSE 🎓
 
 Una aplicación web moderna diseñada para registrar, controlar y gestionar de manera interactiva la asistencia de estudiantes en tiempo real. 
 
-Este proyecto fue estructurado bajo un enfoque *Mobile-First* pensando en la facilidad para que los alumnos confirmen su presencia escaneando un código QR dinámico proveído por el docente. Todo el sistema está orquestado mediante **Docker**, aislando de forma segura la Base de Datos, el API Backend y el Frontend.
+**ADESSE** (Asistencia Digital Estratégica para el Sector Educativo) fue estructurado bajo un enfoque *Mobile-First* pensando en la facilidad para que los alumnos confirmen su presencia escaneando un código QR dinámico proveído por el docente. Todo el sistema está orquestado mediante **Docker**, aislando de forma segura la Base de Datos, el API Backend y el Frontend.
 
 ## 🚀 Características Principales
 
@@ -23,36 +23,9 @@ Este proyecto fue estructurado bajo un enfoque *Mobile-First* pensando en la fac
 La aplicación está construida sobre un stack moderno y eficiente:
 * **Frontend:** React + Vite (Alojado en Node.js, interactivo mediante CSS Moderno).
 * **Backend:** Express API + Node.js
-* **Base de Datos:** PostgreSQL
+* **Base de Datos:** PostgreSQL + Supabase
 * **Contenedores:** Docker + Docker Compose, adicional pgAdmin opcional.
 * **Librerías Adicionales:** Lucide-react (Íconos), QRCode (Generador QR interactivo), JsonWebToken (Cifrado).
-
-## 🎮 Guía de Inicio (Local)
-
-Al usar Docker Compose, correr la aplicación completa requiere un solo comando.
-
-1. Instala [Docker](https://www.docker.com/).
-2. Clona este proyecto o sitúate en la raíz.
-3. Levanta los servicios escribiendo:
-   ```bash
-   docker compose up -d --build
-   ```
-
-Una vez completado el progreso, tendrás disponibles los servicios en tu navegador en:
-* **Frontend Web (SAI):** `http://localhost:5173`
-* **Backend API (Opcional):** `http://localhost:3000`
-* **pgAdmin (DB Viewer):** `http://localhost:8080` (Email: `admin@admin.com` - Pass: `admin`)
-
-## 🙋‍♂️ Cómo se usa
-
-1. **Si eres Docente:**
-   * Haz click en el Tab "Profesor" e inicia sesión con el código: **PROF01**.
-   * Crea una nueva Sesión de clases. Automáticamente se generará un gran código QR en tu pantalla. Déjalo a la vista de tus alumnos.
-   * Haz seguimiento en tiempo real quién se ha registrado. 
-
-2. **Si eres Alumno:**
-   * Inicia sesión con alguno de los códigos CUI matriculados *(Por ej. ALU001 o 20241417)*.
-   * Dependiendo de la hora a la que entres, escoge tu estado disponible e inicia el escáner QR de tu celular.
 
 ## 📁 Estructura del Proyecto
 
@@ -72,8 +45,27 @@ asistencia-app/
 │   └── index.css           # Sistema de diseño y estilos globales
 ├── .gitignore              # Archivos excluidos de Git
 ├── docker-compose.yml      # Orquestación de contenedores
+├── vercel.json             # Configuración para despliegue Cloud
 └── README.md               # Documentación general
 ```
+
+## 🎮 Guía de Inicio (Local)
+
+Al usar Docker Compose, correr la aplicación completa requiere un solo comando.
+
+1. Instala [Docker](https://www.docker.com/).
+2. Clona este proyecto o sitúate en la raíz.
+3. Levanta los servicios escribiendo:
+   ```bash
+   docker compose up -d --build
+   ```
+
+## 🙋‍♂️ Cómo se usa
+
+1. **Si eres Docente:**
+   * Inicia sesión con el código: **PROF01**.
+2. **Si eres Alumno:**
+   * Inicia sesión con tu código CUI matriculado.
 
 ## 🗄️ Esquema DB
 
