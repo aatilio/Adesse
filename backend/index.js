@@ -283,6 +283,12 @@ app.get('/api/asistencias/historial', async (req, res) => {
 });
 
 // ── Start ─────────────────────────────────────────────────────
-app.listen(PORT, () => {
-  console.log(`🚀 API SAI corriendo en http://localhost:${PORT}`);
-});
+// En local/Docker arranca el servidor normal.
+// En Vercel, se exporta el app para funciones serverless.
+if (process.env.NODE_ENV !== 'production' || process.env.DOCKER) {
+  app.listen(PORT, () => {
+    console.log(`🚀 API ADESSE corriendo en http://localhost:${PORT}`);
+  });
+}
+
+export default app;
