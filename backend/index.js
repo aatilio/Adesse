@@ -14,11 +14,8 @@ app.use(express.json());
 
 // ── Database Pool ─────────────────────────────────────────────
 const pool = new Pool({
-  user: process.env.DB_USER || 'root',
-  host: process.env.DB_HOST || 'localhost',
-  database: process.env.DB_NAME || 'asistenciadb',
-  password: process.env.DB_PASSWORD || 'rootpassword',
-  port: parseInt(process.env.DB_PORT || '5432'),
+  connectionString: process.env.DATABASE_URL || `postgresql://root:rootpassword@${process.env.DB_HOST || 'localhost'}:5432/asistenciadb`,
+  ssl: process.env.DATABASE_URL ? { rejectUnauthorized: false } : false
 });
 
 // Retry DB connection on startup (wait for postgres container to be ready)
