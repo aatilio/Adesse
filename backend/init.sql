@@ -1,75 +1,94 @@
 -- ============================================================
--- Sistema de Asistencia Inteligente (SAI)
--- Esquema de Base de Datos v1.0
+-- ADESSE – Asistencia Digital Estratégica para el Sector Educativo
+-- Esquema de Base de Datos v2.0 (Multi-Curso)
 -- ============================================================
-
--- Extensiones necesarias
+-- EXTENSIONES
+-- ============================================================
 CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
 -- ============================================================
 -- TABLA: estudiantes
 -- ============================================================
-CREATE TABLE IF NOT EXISTS estudiantes (
-  id            UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
-  codigo_estudiante TEXT    NOT NULL UNIQUE,
-  nombre_completo   TEXT    NOT NULL,
-  device_id         TEXT,                          -- para evitar duplicidad de dispositivo
+CREATE TABLE estudiantes (
+  id                UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  codigo_estudiante TEXT        NOT NULL UNIQUE,
+  nombre_completo   TEXT        NOT NULL,
+  device_id         TEXT,
   created_at        TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- ============================================================
+-- TABLA: cursos
+-- ============================================================
+CREATE TABLE cursos (
+  id          UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  nombre      VARCHAR(100) NOT NULL,
+  descripcion TEXT         DEFAULT '',
+  created_at  TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+);
+
+-- ============================================================
+-- TABLA: curso_estudiantes  (muchos a muchos)
+-- ============================================================
+CREATE TABLE curso_estudiantes (
+  id             UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  curso_id       UUID NOT NULL REFERENCES cursos(id) ON DELETE CASCADE,
+  estudiante_id  UUID NOT NULL REFERENCES estudiantes(id) ON DELETE CASCADE,
+  UNIQUE(curso_id, estudiante_id)
 );
 
 -- ============================================================
 -- TABLA: sesiones_clase
 -- ============================================================
-CREATE TABLE IF NOT EXISTS sesiones_clase (
-  id               UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
-  nombre_clase     TEXT        NOT NULL,
-  token_qr         TEXT,                          -- JWT dinámico generado por el profesor
-  token_expira_en  TIMESTAMPTZ,
-  activa           BOOLEAN     NOT NULL DEFAULT FALSE,
-  fecha_inicio     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  created_at       TIMESTAMPTZ NOT NULL DEFAULT NOW()
+CREATE TABLE sesiones_clase (
+  id                UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  nombre_clase      TEXT        NOT NULL,
+  token_qr          TEXT,
+  activa            BOOLEAN     NOT NULL DEFAULT FALSE,
+  curso_id          UUID        REFERENCES cursos(id) ON DELETE SET NULL,
+  fecha_programada  TIMESTAMPTZ,
+  fecha_inicio      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  created_at        TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 -- ============================================================
 -- TABLA: asistencias
 -- ============================================================
-CREATE TYPE estado_asistencia AS ENUM ('Puntual', 'Presente', 'Tarde', 'Justificado');
-
-CREATE TABLE IF NOT EXISTS asistencias (
-  id            UUID                PRIMARY KEY DEFAULT gen_random_uuid(),
-  estudiante_id UUID                NOT NULL REFERENCES estudiantes(id) ON DELETE CASCADE,
-  sesion_id     UUID                NOT NULL REFERENCES sesiones_clase(id) ON DELETE CASCADE,
-  fecha_hora    TIMESTAMPTZ         NOT NULL DEFAULT NOW(),
-  estado        estado_asistencia   NOT NULL DEFAULT 'Presente',
-  UNIQUE(estudiante_id, sesion_id)   -- Un alumno no puede marcar dos veces en la misma sesión
+CREATE TABLE asistencias (
+  id             UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  estudiante_id  UUID        NOT NULL REFERENCES estudiantes(id) ON DELETE CASCADE,
+  sesion_id      UUID        NOT NULL REFERENCES sesiones_clase(id) ON DELETE CASCADE,
+  fecha_hora     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  estado         TEXT        NOT NULL DEFAULT 'Presente',
+  UNIQUE(estudiante_id, sesion_id)
 );
 
 -- ============================================================
 -- TABLA: configuracion_horario
 -- ============================================================
-CREATE TABLE IF NOT EXISTS configuracion_horario (
-  id               SERIAL      PRIMARY KEY,
-  limite_puntual   INTEGER     NOT NULL DEFAULT 5,
-  limite_presente  INTEGER     NOT NULL DEFAULT 10,
-  limite_tarde     INTEGER     NOT NULL DEFAULT 15,
-  permitir_falto   BOOLEAN     NOT NULL DEFAULT TRUE,
-  updated_at       TIMESTAMPTZ NOT NULL DEFAULT NOW()
+CREATE TABLE configuracion_horario (
+  id               INT         PRIMARY KEY DEFAULT 1,
+  limite_puntual   VARCHAR(5)  NOT NULL DEFAULT '06:59',
+  limite_presente  VARCHAR(5)  NOT NULL DEFAULT '07:20',
+  limite_tarde     VARCHAR(5)  NOT NULL DEFAULT '08:20',
+  permitir_falto   BOOLEAN     NOT NULL DEFAULT TRUE
 );
 
--- Insertar configuración inicial si no existe
-INSERT INTO configuracion_horario (limite_puntual, limite_presente, limite_tarde, permitir_falto)
-VALUES (5, 10, 15, TRUE)
+INSERT INTO configuracion_horario (id, limite_puntual, limite_presente, limite_tarde, permitir_falto)
+VALUES (1, '06:59', '07:20', '08:20', true)
 ON CONFLICT (id) DO NOTHING;
 
 -- ============================================================
 -- ÍNDICES
 -- ============================================================
-CREATE INDEX IF NOT EXISTS idx_asistencias_sesion    ON asistencias(sesion_id);
-CREATE INDEX IF NOT EXISTS idx_asistencias_estudiante ON asistencias(estudiante_id);
-CREATE INDEX IF NOT EXISTS idx_sesiones_activa        ON sesiones_clase(activa);
+CREATE INDEX idx_asistencias_sesion     ON asistencias(sesion_id);
+CREATE INDEX idx_asistencias_estudiante ON asistencias(estudiante_id);
+CREATE INDEX idx_sesiones_activa        ON sesiones_clase(activa);
+CREATE INDEX idx_sesiones_curso         ON sesiones_clase(curso_id);
+CREATE INDEX idx_curso_est_curso        ON curso_estudiantes(curso_id);
 
 -- ============================================================
--- DATOS DE PRUEBA
+-- DATOS INICIALES: Estudiantes
 -- ============================================================
 INSERT INTO estudiantes (codigo_estudiante, nombre_completo) VALUES
   ('20241417', 'Anconeira Bejar Emanuel Alejandro'),
@@ -129,3 +148,39 @@ INSERT INTO estudiantes (codigo_estudiante, nombre_completo) VALUES
   -- Profesor
   ('PROF01',   'Dr. Roberto Juárez')
 ON CONFLICT (codigo_estudiante) DO NOTHING;
+
+-- ============================================================
+-- DATOS INICIALES: Curso "Econometría" con todos los alumnos
+-- ============================================================
+INSERT INTO cursos (nombre, descripcion)
+VALUES ('Econometría', 'Curso principal — todos los alumnos inscritos');
+
+-- Inscribir a todos los alumnos (excepto profesor) en Econometría
+INSERT INTO curso_estudiantes (curso_id, estudiante_id)
+SELECT
+  (SELECT id FROM cursos WHERE nombre = 'Econometría' LIMIT 1),
+  e.id
+FROM estudiantes e
+WHERE e.codigo_estudiante != 'PROF01';
+
+-- ============================================================
+-- DATOS DE EJEMPLO: Sesión pasada del 13/04 con todos "Presente"
+-- ============================================================
+INSERT INTO sesiones_clase (nombre_clase, token_qr, activa, curso_id, fecha_programada, fecha_inicio)
+VALUES (
+  'Clase Teórica - 13/04',
+  'token_historico_1304',
+  false,
+  (SELECT id FROM cursos WHERE nombre = 'Econometría' LIMIT 1),
+  '2026-04-13 07:00:00-05',
+  '2026-04-13 07:00:00-05'
+);
+
+INSERT INTO asistencias (estudiante_id, sesion_id, estado, fecha_hora)
+SELECT
+  e.id,
+  (SELECT id FROM sesiones_clase WHERE nombre_clase = 'Clase Teórica - 13/04' LIMIT 1),
+  'Presente',
+  '2026-04-13 07:15:00-05'
+FROM estudiantes e
+WHERE e.codigo_estudiante != 'PROF01';

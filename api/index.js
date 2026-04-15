@@ -237,5 +237,128 @@ app.put('/api/configuracion', async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
+// ── CURSOS ─────────────────────────────────────────────────
+
+// GET /api/cursos
+app.get('/api/cursos', async (req, res) => {
+  try {
+    const r = await pool.query(`
+      SELECT c.*, 
+        (SELECT COUNT(*) FROM curso_estudiantes ce WHERE ce.curso_id = c.id)::int AS total_alumnos,
+        (SELECT COUNT(*) FROM sesiones_clase sc WHERE sc.curso_id = c.id)::int AS total_clases
+      FROM cursos c ORDER BY c.created_at DESC
+    `);
+    res.json({ cursos: r.rows });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// POST /api/cursos
+app.post('/api/cursos', async (req, res) => {
+  const { nombre, descripcion } = req.body;
+  try {
+    const r = await pool.query('INSERT INTO cursos (nombre, descripcion) VALUES ($1, $2) RETURNING *', [nombre, descripcion || '']);
+    res.json({ curso: r.rows[0] });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// PUT /api/cursos/:id
+app.put('/api/cursos/:id', async (req, res) => {
+  const { nombre, descripcion } = req.body;
+  try {
+    const r = await pool.query('UPDATE cursos SET nombre=$1, descripcion=$2 WHERE id=$3 RETURNING *', [nombre, descripcion, req.params.id]);
+    res.json({ curso: r.rows[0] });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// DELETE /api/cursos/:id
+app.delete('/api/cursos/:id', async (req, res) => {
+  try {
+    await pool.query('DELETE FROM cursos WHERE id = $1', [req.params.id]);
+    res.json({ ok: true });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// GET /api/cursos/:id/estudiantes
+app.get('/api/cursos/:id/estudiantes', async (req, res) => {
+  try {
+    const r = await pool.query(`
+      SELECT e.* FROM estudiantes e
+      JOIN curso_estudiantes ce ON ce.estudiante_id = e.id
+      WHERE ce.curso_id = $1 ORDER BY e.nombre_completo
+    `, [req.params.id]);
+    res.json({ estudiantes: r.rows });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// POST /api/cursos/:id/estudiantes  (add student to course)
+app.post('/api/cursos/:id/estudiantes', async (req, res) => {
+  const { estudiante_id } = req.body;
+  try {
+    await pool.query('INSERT INTO curso_estudiantes (curso_id, estudiante_id) VALUES ($1, $2) ON CONFLICT DO NOTHING', [req.params.id, estudiante_id]);
+    res.json({ ok: true });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// DELETE /api/cursos/:cursoId/estudiantes/:estudianteId
+app.delete('/api/cursos/:cursoId/estudiantes/:estudianteId', async (req, res) => {
+  try {
+    await pool.query('DELETE FROM curso_estudiantes WHERE curso_id=$1 AND estudiante_id=$2', [req.params.cursoId, req.params.estudianteId]);
+    res.json({ ok: true });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// GET /api/cursos/:id/sesiones
+app.get('/api/cursos/:id/sesiones', async (req, res) => {
+  try {
+    const r = await pool.query(`
+      SELECT sc.*, 
+        (SELECT COUNT(*) FROM asistencias a WHERE a.sesion_id = sc.id)::int AS total_asistencias
+      FROM sesiones_clase sc WHERE sc.curso_id = $1 ORDER BY sc.fecha_programada ASC NULLS LAST, sc.fecha_inicio DESC
+    `, [req.params.id]);
+    res.json({ sesiones: r.rows });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// POST /api/cursos/:id/sesiones  (schedule a class)
+app.post('/api/cursos/:id/sesiones', async (req, res) => {
+  const { nombre_clase, fecha_programada } = req.body;
+  try {
+    const r = await pool.query(
+      'INSERT INTO sesiones_clase (nombre_clase, token_qr, activa, curso_id, fecha_programada) VALUES ($1, $2, false, $3, $4) RETURNING *',
+      [nombre_clase, 'scheduled', req.params.id, fecha_programada]
+    );
+    res.json({ sesion: r.rows[0] });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// PUT /api/sesiones/:id/activar  (start a scheduled session)
+app.put('/api/sesiones/:id/activar', async (req, res) => {
+  try {
+    // Deactivate any other active session
+    await pool.query('UPDATE sesiones_clase SET activa = false WHERE activa = true');
+    const token = generateQrToken(req.params.id);
+    const r = await pool.query(
+      'UPDATE sesiones_clase SET activa = true, token_qr = $1, fecha_inicio = NOW() WHERE id = $2 RETURNING *',
+      [token, req.params.id]
+    );
+    res.json({ sesion: r.rows[0] });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// GET /api/cursos/:id/historial  (attendance matrix filtered by course)
+app.get('/api/cursos/:id/historial', async (req, res) => {
+  try {
+    const r = await pool.query(`
+      SELECT a.id, a.estado, a.fecha_hora, a.sesion_id, a.estudiante_id, 
+             e.nombre_completo, e.codigo_estudiante, s.nombre_clase
+      FROM asistencias a
+      JOIN estudiantes e ON e.id = a.estudiante_id
+      JOIN sesiones_clase s ON s.id = a.sesion_id
+      WHERE s.curso_id = $1
+      ORDER BY a.fecha_hora DESC
+    `, [req.params.id]);
+    res.json({ historial: r.rows });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
 
 export default app;
