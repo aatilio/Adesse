@@ -36,6 +36,7 @@ export const api = {
   // Estudiantes
   getEstudiantes: ()                 => request('GET', '/api/estudiantes'),
   updateEstudiante: (id, payload)    => request('PUT', `/api/estudiantes/${id}`, payload),
+  getEstudianteCursos: (id)          => request('GET', `/api/estudiantes/${id}/cursos`),
 
   // Configuración
   getConfiguracion:    ()            => request('GET', '/api/configuracion'),

@@ -15,10 +15,14 @@ const ESTADO_COLORS = {
 const STEPS = { SELECT: 'select', SCANNING: 'scanning', DONE: 'done' };
 
 export default function StudentPage({ user, onLogout }) {
+  const [viewMode, setViewMode]   = useState('dashboard'); // dashboard | curso
+  const [cursos, setCursos]       = useState([]);
+  const [cursoActivo, setCursoActivo] = useState(null);
+  const [inputCode, setInputCode] = useState('');
+
   const [activeTab, setActiveTab] = useState('marcar'); // marcar | historial
   const [step, setStep]           = useState(STEPS.SELECT);
   const [estado, setEstado]       = useState('');
-  const [sesion, setSesion]       = useState(null);
   const [loading, setLoading]     = useState(false);
   const [registered, setRegistered] = useState(null);
   const [historial, setHistorial] = useState([]);
@@ -33,12 +37,11 @@ export default function StudentPage({ user, onLogout }) {
     return () => clearInterval(t);
   }, []);
 
-  // Config fetch
+  // Config & Cursos fetch
   useEffect(() => {
-    api.getConfiguracion()
-       .then(res => setConfig(res.config))
-       .catch(() => toast.error('Error al cargar configuración de horarios'));
-  }, []);
+    api.getConfiguracion().then(res => setConfig(res.config)).catch(() => {});
+    api.getEstudianteCursos(user.id).then(res => setCursos(res.cursos)).catch(() => {});
+  }, [user.id]);
 
   // Determine valid statuses based on rules
   const getValidStatuses = () => {
@@ -73,18 +76,6 @@ export default function StudentPage({ user, onLogout }) {
   }, [validStatuses, estado]);
 
 
-  // Check for active session
-  useEffect(() => {
-    const checkSesion = async () => {
-      try {
-        const { sesion } = await api.getSesionActiva();
-        setSesion(sesion);
-      } catch { setSesion(null); }
-    };
-    checkSesion();
-    const interval = setInterval(checkSesion, 10000);
-    return () => clearInterval(interval);
-  }, []);
 
   // Fetch Historial
   useEffect(() => {
@@ -170,28 +161,56 @@ export default function StudentPage({ user, onLogout }) {
         </button>
       </div>
 
-      <div className="tabs">
-        <button className={`tab ${activeTab === 'marcar' ? 'active' : ''}`} onClick={() => setActiveTab('marcar')}>
-          <Camera size={16} /> Marcar Hoy
-        </button>
-        <button className={`tab ${activeTab === 'historial' ? 'active' : ''}`} onClick={() => setActiveTab('historial')}>
-          <History size={16} /> Mi Historial
-        </button>
-      </div>
-
-      <div className="page-body">
-        {activeTab === 'historial' ? (
+      <div className="page-body" style={{ width: '100%', padding: '1rem' }}>
+        {viewMode === 'dashboard' ? (
           <div>
-             <h3 style={{ marginBottom: '1rem', fontSize: 'var(--text-md)', color: 'var(--gray-700)' }}>Historial General</h3>
-             {historial.length === 0 ? <p className="text-muted text-center mt-4">No tienes asistencias registradas.</p> : (
+            <h2 style={{ fontSize: '1.2rem', marginBottom: '1.5rem', color: 'var(--gray-800)' }}>Mis Cursos Matriculados</h2>
+            
+            {cursos.length === 0 ? (
+              <div className="empty-state">No estás matriculado en ningún curso aún.</div>
+            ) : (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '1rem' }}>
+                {cursos.map(c => (
+                  <div key={c.id} className="card" onClick={() => { setCursoActivo(c); setViewMode('curso'); }} style={{ cursor: 'pointer' }}>
+                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--primary)', marginBottom: '0.5rem' }}>
+                       <ClipboardList size={18} /> <span style={{ fontWeight: 600, fontSize: '0.85rem' }}>Curso</span>
+                     </div>
+                     <h3 style={{ fontSize: '1.1rem', margin: 0, color: 'var(--gray-800)' }}>{c.nombre}</h3>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        ) : (
+          <>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
+              <button className="btn btn-sm btn-ghost" onClick={() => { setViewMode('dashboard'); setRegistered(null); setInputCode(''); }} style={{ padding: '6px 10px', background: 'white' }}>
+                 « Volver
+              </button>
+              <h2 style={{ fontSize: '1.1rem', margin: 0, color: 'var(--gray-800)' }}>{cursoActivo?.nombre}</h2>
+            </div>
+
+            <div className="tabs" style={{ margin: '0 -1rem 1rem -1rem' }}>
+              <button className={`tab ${activeTab === 'marcar' ? 'active' : ''}`} onClick={() => setActiveTab('marcar')}>
+                <CheckCircle size={16} /> Marcar Asistencia
+              </button>
+              <button className={`tab ${activeTab === 'historial' ? 'active' : ''}`} onClick={() => setActiveTab('historial')}>
+                <History size={16} /> Historial
+              </button>
+            </div>
+
+            {activeTab === 'historial' ? (
+              <div>
+             <h3 style={{ marginBottom: '1rem', fontSize: 'var(--text-md)', color: 'var(--gray-700)' }}>Historial de Asistencia</h3>
+             {historial.filter(h => h.curso_id === cursoActivo.id).length === 0 ? <p className="text-muted text-center mt-4">No tienes asistencias registradas en este curso.</p> : (
                <div className="attendance-list">
-                 {historial.map(h => (
+                 {historial.filter(h => h.curso_id === cursoActivo.id).map(h => (
                     <div key={h.id} className="attendance-item">
-                      <div className="attendance-item-info">
+                      <span className={`badge badge-${h.estado.toLowerCase()}`}>{h.estado}</span>
+                      <div className="attendance-item-info" style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', width: '100%', marginTop: '4px' }}>
                         <span className="attendance-item-name">{h.nombre_clase}</span>
                         <span className="attendance-item-time">{fmtFecha(h.fecha_hora)} - {fmtHora(h.fecha_hora)}</span>
                       </div>
-                      <span className={`badge badge-${h.estado.toLowerCase()}`}>{h.estado}</span>
                     </div>
                  ))}
                </div>
@@ -199,16 +218,6 @@ export default function StudentPage({ user, onLogout }) {
           </div>
         ) : (
           <>
-            {sesion ? (
-              <div className="session-chip" style={{ marginBottom: '1.5rem' }}>
-                <span className="live-dot" /> Clase: <strong>{sesion.nombre_clase}</strong>
-              </div>
-            ) : (
-              <div className="alert alert-warning" style={{ marginBottom: '1.5rem' }}>
-                <span>⚠️</span><span>No hay sesión de clase activa hoy.</span>
-              </div>
-            )}
-
             <div className="alert alert-info" style={{ marginBottom: '1rem' }}>
                 <Clock size={18} style={{flexShrink:0}} />
                 <div style={{fontSize:'0.75rem'}}>
@@ -228,14 +237,14 @@ export default function StudentPage({ user, onLogout }) {
                     <div style={{ fontSize: 'var(--text-xl)', fontWeight: 700, color: 'var(--gray-800)' }}>Registro Completo</div>
                     <div style={{ fontSize: 'var(--text-sm)', color: 'var(--gray-500)', marginTop: 4 }}>Tu registro fue guardado a las {registered.hora}</div>
                   </div>
-                  <span className={`badge badge-${registered.estado.toLowerCase()}`} style={{ fontSize: 'var(--text-base)', padding: '0.4rem 1rem' }}>
+                  <span className={`badge badge-${registered.estado.toLowerCase()}`} style={{ fontSize: 'var(--text-base)' }}>
                     {registered.estado}
                   </span>
                 </div>
               </div>
             )}
 
-            {!registered && sesion && (
+            {!registered && (
               <>
                 <div className="card">
                   <div className="card-title">1. ¿Cómo llegas a clase hoy?</div>
@@ -272,33 +281,47 @@ export default function StudentPage({ user, onLogout }) {
 
                   {validStatuses.length > 0 && (
                   <div className="card mt-4">
-                    <div className="card-title">2. Escanea el QR</div>
+                    <div className="card-title">2. Ingresa Código o Escanea</div>
                     {step === STEPS.SCANNING ? (
                       <div>
                         <div id="qr-reader" ref={scannerRef} style={{ borderRadius: 'var(--radius)', overflow: 'hidden' }} />
                         <button className="btn btn-ghost mt-4" onClick={stopScanner}>Cancelar</button>
                       </div>
                     ) : (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                        <button className="btn btn-primary" onClick={startScanner} disabled={loading || !estado}>
-                          {loading ? <div className="spinner" /> : <><QrCode size={18} /> Abrir cámara</>}
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginTop: '0.5rem' }}>
+                        
+                        <div>
+                          <input 
+                            placeholder="Ej. A1B2C3" 
+                            className="form-input" 
+                            value={inputCode} 
+                            onChange={e => setInputCode(e.target.value.toUpperCase())}
+                            style={{ textAlign: 'center', letterSpacing: '8px', fontWeight: 'bold', textTransform: 'uppercase' }}
+                            maxLength={6}
+                          />
+                        </div>
+                        <button className="btn btn-primary" onClick={() => handleQrScan(inputCode)} disabled={loading || !estado || inputCode.length !== 6}>
+                          {loading ? <div className="spinner" /> : 'Confirmar Código Manual'}
                         </button>
                         
-                        {/* Botón para desarrollo local */}
-                        <button 
-                          className="btn btn-ghost" 
-                          onClick={() => handleQrScan(sesion.token_qr)} 
-                          disabled={loading || !estado || !sesion?.token_qr}
-                          style={{ borderColor: 'var(--primary-light)', color: 'var(--primary)' }}
-                        >
-                          🧪 Simular Escaneo (Modo Local)
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', color: 'var(--gray-400)', margin: '0.5rem 0' }}>
+                          <div style={{ flex: 1, height: '1px', background: 'var(--gray-200)' }} />
+                          <span style={{ fontSize: '0.8rem', fontWeight: 600 }}>O</span>
+                          <div style={{ flex: 1, height: '1px', background: 'var(--gray-200)' }} />
+                        </div>
+
+                        <button className="btn btn-ghost" onClick={startScanner} disabled={loading || !estado} style={{ width: '100%' }}>
+                          <QrCode size={18} /> Escanear QR en la pantalla
                         </button>
+
                       </div>
                     )}
                   </div>
                 )}
               </>
             )}
+          </>
+        )}
           </>
         )}
       </div>

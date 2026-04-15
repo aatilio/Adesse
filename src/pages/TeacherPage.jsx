@@ -257,7 +257,7 @@ export default function TeacherPage({ user, onLogout }) {
   const SHORTS = { Puntual: 'P', Presente: 'Pr', Tarde: 'T', Justificado: 'J', Falto: 'F' };
 
   return (
-    <div className="app-shell" style={{ maxWidth: '100%', width: '100%', padding: '0 1rem' }}>
+    <div className="app-shell">
       {/* Header */}
       <div className="page-header" style={{ justifyContent: 'space-between' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>

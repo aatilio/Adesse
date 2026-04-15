@@ -21,8 +21,7 @@ const pool = new Pool({
 });
 
 // ── Helpers ───────────────────────────────────────────────────
-const generateQrToken = (sesionId) =>
-  jwt.sign({ sesionId, iat: Math.floor(Date.now() / 1000) }, QR_SECRET, { expiresIn: QR_EXPIRY_SECONDS });
+const generateRandomCode = () => Math.random().toString(36).substring(2, 8).toUpperCase();
 
 // ── ROUTES ────────────────────────────────────────────────────
 
@@ -58,15 +57,12 @@ app.post('/api/sesiones', async (req, res) => {
   const { nombre_clase } = req.body;
   try {
     await pool.query('UPDATE sesiones_clase SET activa = false WHERE activa = true');
-    const token = generateQrToken('temp');
+    const token = generateRandomCode();
     const r = await pool.query(
       'INSERT INTO sesiones_clase (nombre_clase, token_qr, activa) VALUES ($1, $2, true) RETURNING *',
       [nombre_clase, token]
     );
-    const sesion = r.rows[0];
-    const finalToken = generateQrToken(sesion.id);
-    const updated = await pool.query('UPDATE sesiones_clase SET token_qr = $1 WHERE id = $2 RETURNING *', [finalToken, sesion.id]);
-    res.json({ sesion: updated.rows[0] });
+    res.json({ sesion: r.rows[0] });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -98,19 +94,17 @@ app.put('/api/sesiones/:id/token', async (req, res) => {
 app.post('/api/asistencias', async (req, res) => {
   const { token_qr, estudiante_id, estado } = req.body;
   try {
-    let decoded;
-    try { decoded = jwt.verify(token_qr, QR_SECRET); }
-    catch { return res.status(401).json({ error: 'QR inválido o expirado' }); }
+    const sesion = await pool.query('SELECT * FROM sesiones_clase WHERE token_qr = $1 AND activa = true', [token_qr]);
+    if (sesion.rows.length === 0) return res.status(400).json({ error: 'Código inválido o sesión inactiva' });
 
-    const sesion = await pool.query('SELECT * FROM sesiones_clase WHERE id = $1 AND activa = true', [decoded.sesionId]);
-    if (sesion.rows.length === 0) return res.status(400).json({ error: 'Sesión no activa' });
+    const sesionId = sesion.rows[0].id;
 
-    const existe = await pool.query('SELECT id FROM asistencias WHERE estudiante_id = $1 AND sesion_id = $2', [estudiante_id, decoded.sesionId]);
+    const existe = await pool.query('SELECT id FROM asistencias WHERE estudiante_id = $1 AND sesion_id = $2', [estudiante_id, sesionId]);
     if (existe.rows.length > 0) return res.status(409).json({ error: 'Asistencia ya registrada' });
 
     const r = await pool.query(
       'INSERT INTO asistencias (estudiante_id, sesion_id, estado) VALUES ($1, $2, $3) RETURNING *',
-      [estudiante_id, decoded.sesionId, estado]
+      [estudiante_id, sesionId, estado]
     );
     res.json({ asistencia: r.rows[0] });
   } catch (err) {
@@ -144,6 +138,20 @@ app.put('/api/estudiantes/:id', async (req, res) => {
   }
 });
 
+// GET /api/estudiantes/:id/cursos
+app.get('/api/estudiantes/:id/cursos', async (req, res) => {
+  try {
+    const r = await pool.query(`
+      SELECT c.* FROM cursos c
+      JOIN curso_estudiantes ce ON ce.curso_id = c.id
+      WHERE ce.estudiante_id = $1 ORDER BY c.created_at DESC
+    `, [req.params.id]);
+    res.json({ cursos: r.rows });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // PUT /api/asistencias/:id
 app.put('/api/asistencias/:id', async (req, res) => {
   try {
@@ -158,7 +166,7 @@ app.put('/api/asistencias/:id', async (req, res) => {
 app.get('/api/asistencias/alumno/:id', async (req, res) => {
   try {
     const r = await pool.query(
-      `SELECT a.id, a.estado, a.fecha_hora, s.nombre_clase
+      `SELECT a.id, a.estado, a.fecha_hora, s.nombre_clase, s.curso_id
        FROM asistencias a JOIN sesiones_clase s ON a.sesion_id = s.id
        WHERE a.estudiante_id = $1 ORDER BY a.fecha_hora DESC`, [req.params.id]
     );
