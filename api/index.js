@@ -196,4 +196,30 @@ app.get('/api/asistencias/historial', async (req, res) => {
   }
 });
 
+// GET /api/configuracion
+app.get('/api/configuracion', async (req, res) => {
+  try {
+    const r = await pool.query('SELECT * FROM configuracion_horario WHERE id = 1');
+    res.json({ config: r.rows[0] });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// PUT /api/configuracion
+app.put('/api/configuracion', async (req, res) => {
+  const { limite_puntual, limite_presente, limite_tarde, permitir_falto } = req.body;
+  try {
+    const r = await pool.query(
+      `UPDATE configuracion_horario 
+       SET limite_puntual = $1, limite_presente = $2, limite_tarde = $3, permitir_falto = $4 
+       WHERE id = 1 RETURNING *`,
+      [limite_puntual, limite_presente, limite_tarde, permitir_falto]
+    );
+    res.json({ config: r.rows[0] });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 export default app;

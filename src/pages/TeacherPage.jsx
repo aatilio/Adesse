@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react';
-import { Plus, StopCircle, LogOut, ClipboardList, Users, History, Radio } from 'lucide-react';
+import { Plus, StopCircle, LogOut, ClipboardList, Users, History, Radio, Settings } from 'lucide-react';
+
 import { api } from '../api/client';
 import { toast } from '../components/Toast';
 import QrGenerator from '../components/QrGenerator';
 import AttendanceTable from '../components/AttendanceTable';
 
 export default function TeacherPage({ user, onLogout }) {
-  const [activeTab, setActiveTab] = useState('vivo'); // vivo | alumnos | historial
+  const [activeTab, setActiveTab] = useState('vivo'); // vivo | alumnos | historial | config
   const [sesion, setSesion]         = useState(null);
   const [nombreClase, setNombre]    = useState('');
   const [loading, setLoading]       = useState(false);
@@ -16,6 +17,7 @@ export default function TeacherPage({ user, onLogout }) {
   // Data for tabs
   const [estudiantes, setEstudiantes] = useState([]);
   const [historialGen, setHistorialGen] = useState([]);
+  const [config, setConfig] = useState(null);
 
   // Init
   useEffect(() => {
@@ -31,6 +33,8 @@ export default function TeacherPage({ user, onLogout }) {
       api.getEstudiantes().then(res => setEstudiantes(res.estudiantes));
     } else if (activeTab === 'historial') {
       api.getHistorialGeneral().then(res => setHistorialGen(res.historial));
+    } else if (activeTab === 'config') {
+      api.getConfiguracion().then(res => setConfig(res.config));
     }
   }, [activeTab]);
 
@@ -89,6 +93,19 @@ export default function TeacherPage({ user, onLogout }) {
     }
   };
 
+  const updateConfig = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    try {
+      await api.updateConfiguracion(config);
+      toast.success('Ajustes de horario actualizados');
+    } catch {
+      toast.error('Error actualizando configuraciones');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   if (checking) {
     return (
       <div className="app-shell" style={{ alignItems: 'center', justifyContent: 'center' }}>
@@ -128,6 +145,9 @@ export default function TeacherPage({ user, onLogout }) {
         </button>
         <button className={`tab ${activeTab === 'historial' ? 'active' : ''}`} onClick={() => setActiveTab('historial')}>
           <History size={16} /> Historial General
+        </button>
+        <button className={`tab ${activeTab === 'config' ? 'active' : ''}`} onClick={() => setActiveTab('config')}>
+          <Settings size={16} /> Ajustes de Hora
         </button>
       </div>
 
@@ -237,6 +257,37 @@ export default function TeacherPage({ user, onLogout }) {
                </div>
              )}
            </div>
+        )}
+
+        {/* VIEW: CONFIG */}
+        {activeTab === 'config' && config && (
+          <div className="card">
+            <div className="card-title">Ajustes de Horario Dinámico</div>
+            <div className="card-subtitle">Define las horas límite para la marcación automática. Formato militar 24H (ej. 06:59).</div>
+            <form onSubmit={updateConfig} style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginTop: '1rem' }}>
+              <div className="form-group">
+                <label className="form-label" style={{ color: 'var(--success)' }}>Hora límite para ingreso PUNTUAL</label>
+                <input className="form-input" type="time" required value={config.limite_puntual} onChange={e => setConfig({ ...config, limite_puntual: e.target.value })} />
+              </div>
+              <div className="form-group">
+                <label className="form-label" style={{ color: 'var(--info)' }}>Hora límite para ingreso PRESENTE</label>
+                <input className="form-input" type="time" required value={config.limite_presente} onChange={e => setConfig({ ...config, limite_presente: e.target.value })} />
+              </div>
+              <div className="form-group">
+                <label className="form-label" style={{ color: 'var(--warning)' }}>Hora límite para ingreso TARDE</label>
+                <input className="form-input" type="time" required value={config.limite_tarde} onChange={e => setConfig({ ...config, limite_tarde: e.target.value })} />
+              </div>
+
+              <div className="form-group" style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', padding: '0.5rem', background: '#f8fafc', borderRadius: '4px' }} onClick={() => setConfig({ ...config, permitir_falto: !config.permitir_falto })}>
+                <input type="checkbox" checked={config.permitir_falto} readOnly style={{ cursor: 'pointer' }} />
+                <span>Permitir a los alumnos marcar INASISTENCIA (Falto) desde el móvil luego de exceder todas las horas de ingreso.</span>
+              </div>
+              
+              <button className="btn btn-primary mt-4" type="submit" disabled={loading}>
+                {loading ? <div className="spinner" /> : 'Guardar Ajustes'}
+              </button>
+            </form>
+          </div>
         )}
       </div>
     </div>

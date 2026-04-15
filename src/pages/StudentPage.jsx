@@ -22,6 +22,7 @@ export default function StudentPage({ user, onLogout }) {
   const [loading, setLoading]     = useState(false);
   const [registered, setRegistered] = useState(null);
   const [historial, setHistorial] = useState([]);
+  const [config, setConfig] = useState(null);
   const [currentTime, setCurrentTime] = useState(new Date());
 
   const scannerRef = useRef(null);
@@ -32,18 +33,32 @@ export default function StudentPage({ user, onLogout }) {
     return () => clearInterval(t);
   }, []);
 
+  // Config fetch
+  useEffect(() => {
+    api.getConfiguracion()
+       .then(res => setConfig(res.config))
+       .catch(() => toast.error('Error al cargar configuración de horarios'));
+  }, []);
+
   // Determine valid statuses based on rules
   const getValidStatuses = () => {
-    const h = currentTime.getHours();
-    const m = currentTime.getMinutes();
-    const mins = h * 60 + m;
-
+    if (!config) return [];
+    const currentHM = currentTime.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', hour12: false });
+    
     let valid = [];
-    if (mins >= 390 && mins < 420) valid.push('Puntual'); // 6:30 to 6:59
-    if (mins >= 420 && mins <= 440) valid.push('Presente'); // 7:00 to 7:20
-    if (mins >= 441 && mins <= 500) valid.push('Tarde'); // 7:21 to 8:20
-    // Justificado could be manual via teacher only, or available anytime.
-    // We'll restrict to automatic states.
+    if (currentHM <= config.limite_puntual) {
+      valid.push('Puntual');
+    } else if (currentHM <= config.limite_presente) {
+      valid.push('Presente');
+    } else if (currentHM <= config.limite_tarde) {
+      valid.push('Tarde');
+    }
+
+    // Permitir Falto luego de todos los márgenes siempre que esté activado
+    if (config.permitir_falto && currentHM > config.limite_tarde) {
+       valid.push('Falto');
+    }
+
     return valid;
   };
 
@@ -197,10 +212,10 @@ export default function StudentPage({ user, onLogout }) {
             <div className="alert alert-info" style={{ marginBottom: '1rem' }}>
                 <Clock size={18} style={{flexShrink:0}} />
                 <div style={{fontSize:'0.75rem'}}>
-                  <strong>Reglas de horario:</strong><br/>
-                  6:30am a 6:59am: Puntual<br/>
-                  7:00am a 7:20am: Presente<br/>
-                  7:20am a 8:20am: Tarde<br/>
+                  <strong>Reglas de horario dinámico:</strong><br/>
+                  Hasta {config?.limite_puntual}: Puntual<br/>
+                  Hasta {config?.limite_presente}: Presente<br/>
+                  Hasta {config?.limite_tarde}: Tarde<br/>
                   Hora actual: <strong>{currentTime.toLocaleTimeString('es-MX')}</strong>
                 </div>
             </div>
@@ -228,14 +243,15 @@ export default function StudentPage({ user, onLogout }) {
                   
                   {validStatuses.length === 0 ? (
                     <div className="alert alert-error">
-                      <strong>Falta automática:</strong> Has excedido el límite de hora de ingreso (8:20 AM).
+                      <strong>Falta automática:</strong> Has excedido de límite ({config?.limite_tarde}).
                     </div>
                   ) : (
                     <div className="status-grid">
-                      {ESTADOS.map(e => {
-                        const isAvailable = validStatuses.includes(e) || e === 'Justificado'; // allow Justificado? No, student shouldn't self-justify
+                      {ESTADOS.concat(['Falto']).map(e => {
                         const isAutoEnabled = validStatuses.includes(e);
-                        
+                        // don't render states we shouldn't
+                        if (!isAutoEnabled && e === 'Falto') return null;
+
                         return (
                           <button
                             key={e} type="button"
@@ -243,7 +259,7 @@ export default function StudentPage({ user, onLogout }) {
                             className={`status-option${estado === e ? ' selected' : ''}`}
                             onClick={() => setEstado(e)}
                             style={estado === e 
-                              ? { borderColor: ESTADO_COLORS[e]?.color, background: ESTADO_COLORS[e]?.bg, color: ESTADO_COLORS[e]?.color } 
+                              ? { borderColor: ESTADO_COLORS[e]?.color || '#dc2626', background: ESTADO_COLORS[e]?.bg || '#ffe4e6', color: ESTADO_COLORS[e]?.color || '#991b1b' } 
                               : (!isAutoEnabled ? { opacity: 0.4, cursor: 'not-allowed', background: '#f0f0f0' } : {})}
                           >
                             {e}

@@ -45,6 +45,23 @@ CREATE TABLE IF NOT EXISTS asistencias (
 );
 
 -- ============================================================
+-- TABLA: configuracion_horario
+-- ============================================================
+CREATE TABLE IF NOT EXISTS configuracion_horario (
+  id               SERIAL      PRIMARY KEY,
+  limite_puntual   INTEGER     NOT NULL DEFAULT 5,
+  limite_presente  INTEGER     NOT NULL DEFAULT 10,
+  limite_tarde     INTEGER     NOT NULL DEFAULT 15,
+  permitir_falto   BOOLEAN     NOT NULL DEFAULT TRUE,
+  updated_at       TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- Insertar configuración inicial si no existe
+INSERT INTO configuracion_horario (limite_puntual, limite_presente, limite_tarde, permitir_falto)
+VALUES (5, 10, 15, TRUE)
+ON CONFLICT (id) DO NOTHING;
+
+-- ============================================================
 -- ÍNDICES
 -- ============================================================
 CREATE INDEX IF NOT EXISTS idx_asistencias_sesion    ON asistencias(sesion_id);
