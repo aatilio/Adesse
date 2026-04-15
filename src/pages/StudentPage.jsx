@@ -1,15 +1,15 @@
 import { useState, useEffect, useRef } from 'react';
-import { LogOut, QrCode, CheckCircle, ClipboardList, Clock, History, Camera } from 'lucide-react';
+import { LogOut, QrCode, CheckCircle, ClipboardList, Clock, History, Camera, Radio } from 'lucide-react';
 import { Html5Qrcode } from 'html5-qrcode';
 import { api } from '../api/client';
 import { toast } from '../components/Toast';
 
 const ESTADOS = ['Puntual', 'Presente', 'Tarde', 'Justificado'];
 const ESTADO_COLORS = {
-  Puntual:     { bg: 'var(--success-bg)',     color: '#065f46' },
-  Presente:    { bg: 'var(--info-bg)',         color: '#1e40af' },
-  Tarde:       { bg: 'var(--warning-bg)',     color: '#92400e' },
-  Justificado: { bg: 'var(--gray-100)',       color: 'var(--gray-600)' },
+  Puntual:     { bg: '#4ade80', color: '#064e3b' },
+  Presente:    { bg: '#60a5fa', color: '#1e3a8a' },
+  Tarde:       { bg: '#fb923c', color: '#7c2d12' },
+  Justificado: { bg: '#c084fc', color: '#4c1d95' },
 };
 
 const STEPS = { SELECT: 'select', SCANNING: 'scanning', DONE: 'done' };
@@ -18,6 +18,8 @@ export default function StudentPage({ user, onLogout }) {
   const [viewMode, setViewMode]   = useState('dashboard'); // dashboard | curso
   const [cursos, setCursos]       = useState([]);
   const [cursoActivo, setCursoActivo] = useState(null);
+  const [sesionActiva, setSesionActiva] = useState(null);
+  const [sesionesCurso, setSesionesCurso] = useState([]);
   const [inputCode, setInputCode] = useState('');
 
   const [activeTab, setActiveTab] = useState('marcar'); // marcar | historial
@@ -43,6 +45,33 @@ export default function StudentPage({ user, onLogout }) {
     api.getEstudianteCursos(user.id).then(res => setCursos(res.cursos)).catch(() => {});
   }, [user.id]);
 
+  // Check for active session
+  useEffect(() => {
+    const checkSesion = () => {
+      api.getSesionActiva()
+         .then(res => setSesionActiva(res.sesion))
+         .catch(() => setSesionActiva(null));
+    };
+    checkSesion();
+    const interval = setInterval(checkSesion, 10000); // Check every 10s
+    return () => clearInterval(interval);
+  }, []);
+
+  // Fetch Historial & Sesiones
+  useEffect(() => {
+    if (!cursoActivo) return;
+    if (activeTab === 'historial') {
+      api.getHistorialAlumno(user.id)
+         .then(res => setHistorial(res.historial))
+         .catch(err => toast.error('Error cargando historial'));
+    }
+    if (activeTab === 'marcar') {
+      api.getCursoSesiones(cursoActivo.id)
+         .then(res => setSesionesCurso(res.sesiones || []))
+         .catch(() => {});
+    }
+  }, [activeTab, user.id, cursoActivo]);
+
   // Determine valid statuses based on rules
   const getValidStatuses = () => {
     if (!config) return [];
@@ -57,16 +86,13 @@ export default function StudentPage({ user, onLogout }) {
       valid.push('Tarde');
     }
 
-    // Permitir Falto luego de todos los márgenes siempre que esté activado
     if (config.permitir_falto && currentHM > config.limite_tarde) {
        valid.push('Falto');
     }
-
     return valid;
   };
 
   const validStatuses = getValidStatuses();
-  // Auto-select valid status if there is exactly 1 valid option and we haven't selected one
   useEffect(() => {
     if (validStatuses.length > 0 && !validStatuses.includes(estado)) {
       setEstado(validStatuses[0]);
@@ -74,17 +100,6 @@ export default function StudentPage({ user, onLogout }) {
       setEstado('');
     }
   }, [validStatuses, estado]);
-
-
-
-  // Fetch Historial
-  useEffect(() => {
-    if (activeTab === 'historial') {
-      api.getHistorialAlumno(user.id)
-         .then(res => setHistorial(res.historial))
-         .catch(err => toast.error('Error cargando historial'));
-    }
-  }, [activeTab, user.id]);
 
   const startScanner = () => {
     if (!estado) {
@@ -96,12 +111,8 @@ export default function StudentPage({ user, onLogout }) {
   };
 
   const initScanner = () => {
-    const el = document.getElementById('qr-reader');
-    if (!el) return;
-
     const scanner = new Html5Qrcode('qr-reader');
     scannerRef.current = scanner;
-
     scanner.start(
       { facingMode: 'environment' },
       { fps: 10, qrbox: { width: 220, height: 220 } },
@@ -145,7 +156,6 @@ export default function StudentPage({ user, onLogout }) {
 
   return (
     <div className="app-shell">
-      {/* Header */}
       <div className="page-header" style={{ justifyContent: 'space-between' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
           <ClipboardList size={20} />
@@ -165,7 +175,6 @@ export default function StudentPage({ user, onLogout }) {
         {viewMode === 'dashboard' ? (
           <div>
             <h2 style={{ fontSize: '1.2rem', marginBottom: '1.5rem', color: 'var(--gray-800)' }}>Mis Cursos Matriculados</h2>
-            
             {cursos.length === 0 ? (
               <div className="empty-state">No estás matriculado en ningún curso aún.</div>
             ) : (
@@ -182,147 +191,141 @@ export default function StudentPage({ user, onLogout }) {
             )}
           </div>
         ) : (
-          <>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
-              <button className="btn btn-sm btn-ghost" onClick={() => { setViewMode('dashboard'); setRegistered(null); setInputCode(''); }} style={{ padding: '6px 10px', background: 'white' }}>
-                 « Volver
-              </button>
-              <h2 style={{ fontSize: '1.1rem', margin: 0, color: 'var(--gray-800)' }}>{cursoActivo?.nombre}</h2>
-            </div>
-
-            <div className="tabs" style={{ margin: '0 -1rem 1rem -1rem' }}>
-              <button className={`tab ${activeTab === 'marcar' ? 'active' : ''}`} onClick={() => setActiveTab('marcar')}>
-                <CheckCircle size={16} /> Marcar Asistencia
-              </button>
-              <button className={`tab ${activeTab === 'historial' ? 'active' : ''}`} onClick={() => setActiveTab('historial')}>
-                <History size={16} /> Historial
-              </button>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+            {/* Header & Tabs */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                <button className="btn btn-sm btn-ghost" onClick={() => { setViewMode('dashboard'); setRegistered(null); setInputCode(''); }} style={{ padding: '6px 10px', background: 'white' }}>
+                   « Volver
+                </button>
+                <h2 style={{ fontSize: '1.1rem', margin: 0, color: 'var(--gray-800)' }}>{cursoActivo?.nombre}</h2>
+              </div>
+              <div className="tabs" style={{ margin: 0 }}>
+                <button className={`tab ${activeTab === 'marcar' ? 'active' : ''}`} onClick={() => setActiveTab('marcar')}>
+                  <CheckCircle size={16} /> Marcar
+                </button>
+                <button className={`tab ${activeTab === 'historial' ? 'active' : ''}`} onClick={() => setActiveTab('historial')}>
+                  <History size={16} /> Historial
+                </button>
+              </div>
             </div>
 
             {activeTab === 'historial' ? (
-              <div>
-             <h3 style={{ marginBottom: '1rem', fontSize: 'var(--text-md)', color: 'var(--gray-700)' }}>Historial de Asistencia</h3>
-             {historial.filter(h => h.curso_id === cursoActivo.id).length === 0 ? <p className="text-muted text-center mt-4">No tienes asistencias registradas en este curso.</p> : (
-               <div className="attendance-list">
-                 {historial.filter(h => h.curso_id === cursoActivo.id).map(h => (
+              <div className="attendance-list">
+                <h3 style={{ marginBottom: '1rem', fontSize: 'var(--text-md)', color: 'var(--gray-700)' }}>Historial</h3>
+                {historial.filter(h => h.curso_id === cursoActivo.id).length === 0 ? <p className="text-muted text-center mt-4">No hay asistencias.</p> : (
+                  historial.filter(h => h.curso_id === cursoActivo.id).map(h => (
                     <div key={h.id} className="attendance-item">
                       <span className={`badge badge-${h.estado.toLowerCase()}`}>{h.estado}</span>
-                      <div className="attendance-item-info" style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', width: '100%', marginTop: '4px' }}>
-                        <span className="attendance-item-name">{h.nombre_clase}</span>
+                      <div className="attendance-item-info" style={{ flexDirection: 'row', justifyContent: 'space-between', width: '100%' }}>
+                        <span>{h.nombre_clase}</span>
                         <span className="attendance-item-time">{fmtFecha(h.fecha_hora)} - {fmtHora(h.fecha_hora)}</span>
                       </div>
                     </div>
-                 ))}
-               </div>
-             )}
-          </div>
-        ) : (
-          <>
-            <div className="alert alert-info" style={{ marginBottom: '1rem' }}>
-                <Clock size={18} style={{flexShrink:0}} />
-                <div style={{fontSize:'0.75rem'}}>
-                  <strong>Reglas de horario dinámico:</strong><br/>
-                  Hasta {config?.limite_puntual}: Puntual<br/>
-                  Hasta {config?.limite_presente}: Presente<br/>
-                  Hasta {config?.limite_tarde}: Tarde<br/>
-                  Hora actual: <strong>{currentTime.toLocaleTimeString('es-MX')}</strong>
+                  ))
+                )}
+              </div>
+            ) : (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '1.5rem' }}>
+                {/* Scheduled Sessions */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                   <h3 style={{ fontSize: '0.85rem', color: 'var(--gray-500)', fontWeight: 600, textTransform: 'uppercase' }}>Clases Programadas</h3>
+                   {sesionesCurso.length === 0 ? <div className="card">No hay clases.</div> : (
+                     sesionesCurso.map(s => {
+                       const sDate = s.fecha_programada ? new Date(s.fecha_programada) : new Date(s.fecha_inicio);
+                       const isToday = sDate.toDateString() === currentTime.toDateString();
+                       return (
+                         <div key={s.id} className="card" style={{ 
+                            borderLeft: isToday ? '4px solid var(--primary)' : '1px solid var(--gray-200)',
+                            background: isToday ? 'var(--primary-bg)' : 'white'
+                         }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <div>
+                                <div style={{ fontWeight: 700, fontSize: '0.9rem' }}>{s.nombre_clase}</div>
+                                <div style={{ fontSize: '0.75rem', color: 'var(--gray-500)' }}>{fmtFecha(sDate)} • {fmtHora(sDate)}</div>
+                              </div>
+                              {isToday && <span className="badge" style={{ background: 'var(--primary)', color: 'white' }}>Hoy</span>}
+                            </div>
+                         </div>
+                       );
+                     })
+                   )}
                 </div>
-            </div>
 
-            {registered && (
-              <div className="card" style={{ textAlign: 'center' }}>
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem', padding: '1rem 0' }}>
-                  <CheckCircle size={56} color="var(--success)" strokeWidth={1.5} />
-                  <div>
-                    <div style={{ fontSize: 'var(--text-xl)', fontWeight: 700, color: 'var(--gray-800)' }}>Registro Completo</div>
-                    <div style={{ fontSize: 'var(--text-sm)', color: 'var(--gray-500)', marginTop: 4 }}>Tu registro fue guardado a las {registered.hora}</div>
+                {/* Mark Panel */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                  <h3 style={{ fontSize: '0.85rem', color: 'var(--gray-500)', fontWeight: 600, textTransform: 'uppercase' }}>Registro</h3>
+                  
+                  <div className="alert alert-info">
+                    <Clock size={16} />
+                    <div style={{ fontSize: '0.75rem' }}>
+                      Hora: <strong>{currentTime.toLocaleTimeString('es-MX')}</strong>
+                    </div>
                   </div>
-                  <span className={`badge badge-${registered.estado.toLowerCase()}`} style={{ fontSize: 'var(--text-base)' }}>
-                    {registered.estado}
-                  </span>
+
+                  {sesionActiva && sesionActiva.curso_id === cursoActivo.id && (
+                    <div className="alert alert-success animate-pulse">
+                      <Radio size={16} className="live-dot" />
+                      <div>
+                        <strong>Clase en Vivo:</strong> {sesionActiva.nombre_clase}<br/>
+                        <span style={{ fontSize: 'var(--text-xs)' }}>Código habilitado</span>
+                      </div>
+                    </div>
+                  )}
+
+                  {registered ? (
+                    <div className="card" style={{ textAlign: 'center' }}>
+                      <CheckCircle size={48} color="var(--success)" style={{ margin: '1rem auto' }} />
+                      <div style={{ fontWeight: 700 }}>Asistencia Registrada</div>
+                      <div style={{ fontSize: '0.8rem', color: 'var(--gray-500)' }}>{registered.hora} - {registered.estado}</div>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="card">
+                        <div className="card-title">1. Estado</div>
+                        {validStatuses.length === 0 ? (
+                           <div className="alert alert-error">Fuera de horario.</div>
+                        ) : (
+                           <div className="status-grid" style={{ gridTemplateColumns: '1fr 1fr' }}>
+                             {ESTADOS.concat(['Falto']).map(e => {
+                               const isAutoEnabled = validStatuses.includes(e);
+                               if (!isAutoEnabled && e === 'Falto') return null;
+                               return (
+                                 <button key={e} type="button" disabled={!isAutoEnabled}
+                                   className={`status-option${estado === e ? ' selected' : ''}`}
+                                   onClick={() => setEstado(e)}
+                                 >{e}</button>
+                               );
+                             })}
+                           </div>
+                        )}
+                      </div>
+
+                      {validStatuses.length > 0 && (
+                        <div className="card">
+                          <div className="card-title">2. Identificación</div>
+                          {step === STEPS.SCANNING ? (
+                            <div id="qr-reader" style={{ borderRadius: '8px', overflow: 'hidden' }} />
+                          ) : (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                              <input 
+                                placeholder="CÓDIGO" className="form-input" 
+                                value={inputCode} onChange={e => setInputCode(e.target.value.toUpperCase())}
+                                style={{ textAlign: 'center', fontWeight: 'bold' }} maxLength={6}
+                              />
+                              <button className="btn btn-primary" onClick={() => handleQrScan(inputCode)} disabled={loading || !estado || inputCode.length !== 6}>
+                                Confirmar Código
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </>
+                  )}
                 </div>
               </div>
             )}
-
-            {!registered && (
-              <>
-                <div className="card">
-                  <div className="card-title">1. ¿Cómo llegas a clase hoy?</div>
-                  <div className="card-subtitle">El sistema bloquea opciones según la hora actual</div>
-                  
-                  {validStatuses.length === 0 ? (
-                    <div className="alert alert-error">
-                      <strong>Falta automática:</strong> Has excedido de límite ({config?.limite_tarde}).
-                    </div>
-                  ) : (
-                    <div className="status-grid">
-                      {ESTADOS.concat(['Falto']).map(e => {
-                        const isAutoEnabled = validStatuses.includes(e);
-                        // don't render states we shouldn't
-                        if (!isAutoEnabled && e === 'Falto') return null;
-
-                        return (
-                          <button
-                            key={e} type="button"
-                            disabled={!isAutoEnabled}
-                            className={`status-option${estado === e ? ' selected' : ''}`}
-                            onClick={() => setEstado(e)}
-                            style={estado === e 
-                              ? { borderColor: ESTADO_COLORS[e]?.color || '#dc2626', background: ESTADO_COLORS[e]?.bg || '#ffe4e6', color: ESTADO_COLORS[e]?.color || '#991b1b' } 
-                              : (!isAutoEnabled ? { opacity: 0.4, cursor: 'not-allowed', background: '#f0f0f0' } : {})}
-                          >
-                            {e}
-                          </button>
-                        )
-                      })}
-                    </div>
-                  )}
-                </div>
-
-                  {validStatuses.length > 0 && (
-                  <div className="card mt-4">
-                    <div className="card-title">2. Ingresa Código o Escanea</div>
-                    {step === STEPS.SCANNING ? (
-                      <div>
-                        <div id="qr-reader" ref={scannerRef} style={{ borderRadius: 'var(--radius)', overflow: 'hidden' }} />
-                        <button className="btn btn-ghost mt-4" onClick={stopScanner}>Cancelar</button>
-                      </div>
-                    ) : (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginTop: '0.5rem' }}>
-                        
-                        <div>
-                          <input 
-                            placeholder="Ej. A1B2C3" 
-                            className="form-input" 
-                            value={inputCode} 
-                            onChange={e => setInputCode(e.target.value.toUpperCase())}
-                            style={{ textAlign: 'center', letterSpacing: '8px', fontWeight: 'bold', textTransform: 'uppercase' }}
-                            maxLength={6}
-                          />
-                        </div>
-                        <button className="btn btn-primary" onClick={() => handleQrScan(inputCode)} disabled={loading || !estado || inputCode.length !== 6}>
-                          {loading ? <div className="spinner" /> : 'Confirmar Código Manual'}
-                        </button>
-                        
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', color: 'var(--gray-400)', margin: '0.5rem 0' }}>
-                          <div style={{ flex: 1, height: '1px', background: 'var(--gray-200)' }} />
-                          <span style={{ fontSize: '0.8rem', fontWeight: 600 }}>O</span>
-                          <div style={{ flex: 1, height: '1px', background: 'var(--gray-200)' }} />
-                        </div>
-
-                        <button className="btn btn-ghost" onClick={startScanner} disabled={loading || !estado} style={{ width: '100%' }}>
-                          <QrCode size={18} /> Escanear QR en la pantalla
-                        </button>
-
-                      </div>
-                    )}
-                  </div>
-                )}
-              </>
-            )}
-          </>
-        )}
-          </>
+          </div>
         )}
       </div>
     </div>

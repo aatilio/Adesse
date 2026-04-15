@@ -20,7 +20,7 @@ export const api = {
 
   // Sesiones
   getSesionActiva:() => request('GET', '/api/sesiones/activa'),
-  crearSesion:    (nombre_clase)      => request('POST', '/api/sesiones', { nombre_clase }),
+  crearSesion:    (nombre_clase, curso_id) => request('POST', '/api/sesiones', { nombre_clase, curso_id }),
   cerrarSesion:   (id)               => request('DELETE', `/api/sesiones/${id}`),
   refrescarToken: (id)               => request('PUT', `/api/sesiones/${id}/token`),
   activarSesion:  (id)               => request('PUT', `/api/sesiones/${id}/activar`),

@@ -95,12 +95,12 @@ export default function LoginPage({ onLogin }) {
             </label>
             <input
               className="form-input"
-              type="text"
+              type={role === "profesor" ? "password" : "text"}
               autoFocus
               spellCheck={false}
               value={codigo}
               onChange={(e) => setCodigo(e.target.value.toUpperCase())}
-              placeholder={role === "alumno" ? "CUI: 2024----" : ""}
+              placeholder={role === "alumno" ? "CUI: 20241234" : ""}
             />
           </div>
 

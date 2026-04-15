@@ -44,7 +44,19 @@ app.post('/api/auth/login', async (req, res) => {
 // GET /api/sesiones/activa
 app.get('/api/sesiones/activa', async (req, res) => {
   try {
-    const r = await pool.query(`SELECT * FROM sesiones_clase WHERE activa = true ORDER BY fecha_inicio DESC LIMIT 1`);
+    // 1. Check for manually activated session
+    let r = await pool.query(`SELECT * FROM sesiones_clase WHERE activa = true ORDER BY fecha_inicio DESC LIMIT 1`);
+    
+    // 2. If nothing manually active, look for a scheduled session for TODAY
+    if (r.rows.length === 0) {
+      r = await pool.query(`
+        SELECT * FROM sesiones_clase 
+        WHERE activa = false 
+        AND fecha_programada::date = CURRENT_DATE 
+        ORDER BY fecha_programada ASC LIMIT 1
+      `);
+    }
+
     if (r.rows.length === 0) return res.status(404).json({ error: 'No hay sesión activa' });
     res.json({ sesion: r.rows[0] });
   } catch (err) {
@@ -54,13 +66,14 @@ app.get('/api/sesiones/activa', async (req, res) => {
 
 // POST /api/sesiones
 app.post('/api/sesiones', async (req, res) => {
-  const { nombre_clase } = req.body;
+  const { nombre_clase, curso_id } = req.body;
   try {
+    // Deactivate any other active session
     await pool.query('UPDATE sesiones_clase SET activa = false WHERE activa = true');
     const token = generateRandomCode();
     const r = await pool.query(
-      'INSERT INTO sesiones_clase (nombre_clase, token_qr, activa) VALUES ($1, $2, true) RETURNING *',
-      [nombre_clase, token]
+      'INSERT INTO sesiones_clase (nombre_clase, token_qr, activa, curso_id, fecha_inicio) VALUES ($1, $2, true, $3, NOW()) RETURNING *',
+      [nombre_clase, token, curso_id]
     );
     res.json({ sesion: r.rows[0] });
   } catch (err) {
@@ -94,8 +107,14 @@ app.put('/api/sesiones/:id/token', async (req, res) => {
 app.post('/api/asistencias', async (req, res) => {
   const { token_qr, estudiante_id, estado } = req.body;
   try {
-    const sesion = await pool.query('SELECT * FROM sesiones_clase WHERE token_qr = $1 AND activa = true', [token_qr]);
-    if (sesion.rows.length === 0) return res.status(400).json({ error: 'Código inválido o sesión inactiva' });
+    // Look for session with matching token that is either 'activa' OR scheduled for TODAY
+    const sesion = await pool.query(`
+      SELECT * FROM sesiones_clase 
+      WHERE token_qr = $1 
+      AND (activa = true OR fecha_programada::date = CURRENT_DATE)
+    `, [token_qr]);
+
+    if (sesion.rows.length === 0) return res.status(400).json({ error: 'Código inválido o clase no disponible hoy' });
 
     const sesionId = sesion.rows[0].id;
 
@@ -331,9 +350,10 @@ app.get('/api/cursos/:id/sesiones', async (req, res) => {
 app.post('/api/cursos/:id/sesiones', async (req, res) => {
   const { nombre_clase, fecha_programada } = req.body;
   try {
+    const token = generateRandomCode();
     const r = await pool.query(
       'INSERT INTO sesiones_clase (nombre_clase, token_qr, activa, curso_id, fecha_programada) VALUES ($1, $2, false, $3, $4) RETURNING *',
-      [nombre_clase, 'scheduled', req.params.id, fecha_programada]
+      [nombre_clase, token, req.params.id, fecha_programada]
     );
     res.json({ sesion: r.rows[0] });
   } catch (err) { res.status(500).json({ error: err.message }); }
