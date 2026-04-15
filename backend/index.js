@@ -18,23 +18,6 @@ const pool = new Pool({
   ssl: process.env.DATABASE_URL ? { rejectUnauthorized: false } : false
 });
 
-// Retry DB connection on startup (wait for postgres container to be ready)
-const connectWithRetry = async (retries = 10, delay = 2000) => {
-  for (let i = 0; i < retries; i++) {
-    try {
-      const client = await pool.connect();
-      console.log('✅ Conectado a PostgreSQL');
-      client.release();
-      return;
-    } catch (err) {
-      console.log(`⏳ Esperando base de datos... intento ${i + 1}/${retries}`);
-      await new Promise(res => setTimeout(res, delay));
-    }
-  }
-  console.error('❌ No se pudo conectar a la base de datos');
-};
-
-await connectWithRetry();
 
 // ── Helpers ───────────────────────────────────────────────────
 const generateQrToken = (sesionId) => {

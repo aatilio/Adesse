@@ -34,6 +34,7 @@ services:
       - DB_PASSWORD=rootpassword
       - DB_NAME=asistenciadb
       - DB_PORT=5432
+      - DOCKER=true
     depends_on:
       - db
     networks:
