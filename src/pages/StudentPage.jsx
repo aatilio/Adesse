@@ -63,7 +63,7 @@ export default function StudentPage({ user, onLogout }) {
     if (activeTab === 'historial') {
       api.getHistorialAlumno(user.id)
          .then(res => setHistorial(res.historial))
-         .catch(err => toast.error('Error cargando historial'));
+         .catch(() => toast.error('Error cargando historial'));
     }
     if (activeTab === 'marcar') {
       api.getCursoSesiones(cursoActivo.id)

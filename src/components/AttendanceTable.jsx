@@ -47,7 +47,7 @@ export default function AttendanceTable({ sesionId, asistencias, setAsistencias 
             <div key={a.id} className="attendance-item">
               <div className="attendance-item-info">
                 <span className="attendance-item-name">{a.nombre_completo}</span>
-                <span className="attendance-item-code">{a.codigo_estudiante}</span>
+                <span className="attendance-item-code">{a.codigo}</span>
                 <span className="attendance-item-time">{fmt(a.fecha_hora)}</span>
               </div>
               <span className={`badge ${BADGE[a.estado] || ''}`}>{a.estado}</span>

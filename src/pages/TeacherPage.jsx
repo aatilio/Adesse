@@ -16,6 +16,7 @@ import {
   X,
 } from "lucide-react";
 import { api } from "../api/client";
+import { ROL } from "../constants/roles";
 import { toast } from "../components/Toast";
 import QrGenerator from "../components/QrGenerator";
 import AttendanceTable from "../components/AttendanceTable";
@@ -91,7 +92,7 @@ export default function TeacherPage({ user, onLogout }) {
         ([resC, resA]) => {
           setEstudiantesCurso(resC.estudiantes);
           setTodosEstudiantes(
-            resA.estudiantes.filter((e) => e.codigo_estudiante !== "PROF01"),
+            resA.estudiantes.filter((e) => Number(e.rol) === ROL.ESTUDIANTE),
           );
         },
       );
@@ -774,7 +775,7 @@ export default function TeacherPage({ user, onLogout }) {
                     >
                       {alumnosNoInscritos.map((e) => (
                         <option key={e.id} value={e.id}>
-                          {e.nombre_completo} ({e.codigo_estudiante})
+                          {e.nombre_completo} ({e.codigo})
                         </option>
                       ))}
                     </select>
@@ -808,11 +809,11 @@ export default function TeacherPage({ user, onLogout }) {
                       />
                       <input
                         type="text"
-                        defaultValue={est.codigo_estudiante}
+                        defaultValue={est.codigo}
                         onBlur={(e) =>
                           updateEstudiante(
                             est.id,
-                            "codigo_estudiante",
+                            "codigo",
                             e.target.value,
                           )
                         }
@@ -1132,7 +1133,7 @@ export default function TeacherPage({ user, onLogout }) {
                                       color: "var(--gray-400)",
                                     }}
                                   >
-                                    {est.codigo_estudiante}
+                                    {est.codigo}
                                   </span>
                                 </div>
                               </td>

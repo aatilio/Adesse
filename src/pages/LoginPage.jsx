@@ -1,17 +1,14 @@
 import { useState } from "react";
 import {
   ClipboardList,
-  User,
-  GraduationCap,
   ChevronRight,
-  Loader,
 } from "lucide-react";
 import { api } from "../api/client";
 import { toast } from "../components/Toast";
+import { mapRolToUiRole } from "../constants/roles";
 
 export default function LoginPage({ onLogin }) {
   const [codigo, setCodigo] = useState("");
-  const [role, setRole] = useState("alumno"); // 'alumno' | 'profesor'
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e) => {
@@ -19,27 +16,14 @@ export default function LoginPage({ onLogin }) {
     if (!codigo.trim()) return;
     setLoading(true);
     try {
-      if (role === "profesor") {
-        // El profesor accede directamente con código PROF01
-        const { estudiante } = await api.login(codigo.trim());
-        if (!codigo.toUpperCase().startsWith("PROF")) {
-          toast.error("Código de profesor inválido");
-          setLoading(false);
-          return;
-        }
-        localStorage.setItem(
-          "sai_user",
-          JSON.stringify({ ...estudiante, role: "profesor" }),
-        );
-        onLogin({ ...estudiante, role: "profesor" });
-      } else {
-        const { estudiante } = await api.login(codigo.trim());
-        localStorage.setItem(
-          "sai_user",
-          JSON.stringify({ ...estudiante, role: "alumno" }),
-        );
-        onLogin({ ...estudiante, role: "alumno" });
+      const { usuario } = await api.login(codigo.trim());
+      const role = mapRolToUiRole(usuario.rol);
+      if (!role) {
+        toast.error("Rol de usuario no reconocido");
+        return;
       }
+
+      onLogin({ ...usuario, role });
       toast.success("¡Bienvenido!");
     } catch (err) {
       toast.error(err.message);
@@ -64,43 +48,19 @@ export default function LoginPage({ onLogin }) {
           </div>
         </div>
 
-        {/* Role Switcher */}
-        <div className="role-switcher">
-          <button
-            type="button"
-            className={role === "alumno" ? "active" : ""}
-            onClick={() => setRole("alumno")}
-          >
-            <GraduationCap
-              size={14}
-              style={{ display: "inline", marginRight: 6 }}
-            />
-            Alumno
-          </button>
-          <button
-            type="button"
-            className={role === "profesor" ? "active" : ""}
-            onClick={() => setRole("profesor")}
-          >
-            <User size={14} style={{ display: "inline", marginRight: 6 }} />
-            Profesor
-          </button>
-        </div>
-
-        {/* Form */}
+        {/* Form — un solo acceso; el código define si es estudiante o administrador */}
         <form onSubmit={handleSubmit}>
           <div className="form-group">
-            <label className="form-label">
-              {role === "alumno" ? "CUI de Estudiante" : "Código"}
-            </label>
+            <label className="form-label">Código de acceso</label>
             <input
               className="form-input"
-              type={role === "profesor" ? "password" : "text"}
+              type="text"
               autoFocus
               spellCheck={false}
+              autoComplete="username"
               value={codigo}
               onChange={(e) => setCodigo(e.target.value.toUpperCase())}
-              placeholder={role === "alumno" ? "CUI: 20241234" : ""}
+              placeholder="CUI o código de administrador"
             />
           </div>
 

@@ -11,6 +11,10 @@ const app = express();
 const QR_SECRET = process.env.QR_SECRET || 'sai-qr-super-secret-key-2024';
 const QR_EXPIRY_SECONDS = 15;
 
+/** Coincide con columna usuarios.rol (1 = admin/profesor, 2 = estudiante). */
+const ROL_ADMIN = 1;
+const ROL_ESTUDIANTE = 2;
+
 app.use(cors());
 app.use(express.json());
 
@@ -28,19 +32,31 @@ const generateRandomCode = () => {
   return result;
 };
 
+const generateQrToken = (sesionId) =>
+  jwt.sign(
+    { sesionId, iat: Math.floor(Date.now() / 1000) },
+    QR_SECRET,
+    { expiresIn: QR_EXPIRY_SECONDS }
+  );
+
 // ── ROUTES ────────────────────────────────────────────────────
 
 // Health check
 app.get('/api/health', (_, res) => res.json({ status: 'ok', env: !!process.env.DATABASE_URL }));
 
-// POST /api/auth/login
+// POST /api/auth/login — un solo campo `codigo`; el rol (1=admin/profesor, 2=estudiante) viene de la BD
 app.post('/api/auth/login', async (req, res) => {
-  const { codigo_estudiante } = req.body;
-  if (!codigo_estudiante) return res.status(400).json({ error: 'Código requerido' });
+  const raw = req.body?.codigo ?? req.body?.codigo_estudiante;
+  if (!raw || String(raw).trim() === '') return res.status(400).json({ error: 'Código requerido' });
   try {
-    const r = await pool.query('SELECT * FROM estudiantes WHERE codigo_estudiante = $1', [codigo_estudiante.toUpperCase()]);
+    const r = await pool.query('SELECT * FROM usuarios WHERE codigo = $1', [String(raw).trim().toUpperCase()]);
     if (r.rows.length === 0) return res.status(404).json({ error: 'Código no encontrado' });
-    res.json({ estudiante: r.rows[0] });
+    const u = r.rows[0];
+    const rol = Number(u.rol);
+    if (rol !== ROL_ADMIN && rol !== ROL_ESTUDIANTE) {
+      return res.status(403).json({ error: 'Rol de usuario no válido' });
+    }
+    res.json({ usuario: { ...u, rol } });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -112,6 +128,12 @@ app.put('/api/sesiones/:id/token', async (req, res) => {
 app.post('/api/asistencias', async (req, res) => {
   const { token_qr, estudiante_id, estado } = req.body;
   try {
+    const alumno = await pool.query('SELECT id, rol FROM usuarios WHERE id = $1', [estudiante_id]);
+    if (alumno.rows.length === 0) return res.status(400).json({ error: 'Usuario no encontrado' });
+    if (Number(alumno.rows[0].rol) !== ROL_ESTUDIANTE) {
+      return res.status(403).json({ error: 'Solo los estudiantes pueden registrar asistencia' });
+    }
+
     // Look for session with matching token that is either 'activa' OR scheduled for TODAY
     const sesion = await pool.query(`
       SELECT * FROM sesiones_clase 
@@ -138,23 +160,26 @@ app.post('/api/asistencias', async (req, res) => {
 
 
 
-// GET /api/estudiantes
+// GET /api/estudiantes (Now usuarios)
 app.get('/api/estudiantes', async (req, res) => {
   try {
-    const r = await pool.query('SELECT * FROM estudiantes ORDER BY nombre_completo');
+    const r = await pool.query(
+      'SELECT * FROM usuarios WHERE rol = $1 ORDER BY nombre_completo',
+      [ROL_ESTUDIANTE]
+    );
     res.json({ estudiantes: r.rows });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-// PUT /api/estudiantes/:id
+// PUT /api/estudiantes/:id (Now usuarios)
 app.put('/api/estudiantes/:id', async (req, res) => {
-  const { codigo_estudiante, nombre_completo } = req.body;
+  const { codigo, nombre_completo } = req.body;
   try {
     const r = await pool.query(
-      'UPDATE estudiantes SET codigo_estudiante = $1, nombre_completo = $2 WHERE id = $3 RETURNING *',
-      [codigo_estudiante, nombre_completo, req.params.id]
+      'UPDATE usuarios SET codigo = $1, nombre_completo = $2 WHERE id = $3 RETURNING *',
+      [codigo, nombre_completo, req.params.id]
     );
     res.json({ estudiante: r.rows[0] });
   } catch (err) {
@@ -204,9 +229,9 @@ app.get('/api/asistencias/alumno/:id', async (req, res) => {
 app.get('/api/asistencias/historial', async (req, res) => {
   try {
     const r = await pool.query(
-      `SELECT a.id, a.estado, a.fecha_hora, a.sesion_id, a.estudiante_id, e.nombre_completo, e.codigo_estudiante, s.nombre_clase
+      `SELECT a.id, a.estado, a.fecha_hora, a.sesion_id, a.estudiante_id, u.nombre_completo, u.codigo, s.nombre_clase
        FROM asistencias a
-       JOIN estudiantes e ON e.id = a.estudiante_id
+       JOIN usuarios u ON u.id = a.estudiante_id
        JOIN sesiones_clase s ON s.id = a.sesion_id
        ORDER BY a.fecha_hora DESC`
     );
@@ -220,8 +245,8 @@ app.get('/api/asistencias/historial', async (req, res) => {
 app.get('/api/asistencias/:sesion_id', async (req, res) => {
   try {
     const r = await pool.query(
-      `SELECT a.id, a.estado, a.fecha_hora, e.nombre_completo, e.codigo_estudiante
-       FROM asistencias a JOIN estudiantes e ON e.id = a.estudiante_id
+      `SELECT a.id, a.estado, a.fecha_hora, u.nombre_completo, u.codigo
+       FROM asistencias a JOIN usuarios u ON u.id = a.estudiante_id
        WHERE a.sesion_id = $1 ORDER BY a.fecha_hora ASC`, [req.params.sesion_id]
     );
     res.json({ asistencias: r.rows });
@@ -314,9 +339,9 @@ app.delete('/api/cursos/:id', async (req, res) => {
 app.get('/api/cursos/:id/estudiantes', async (req, res) => {
   try {
     const r = await pool.query(`
-      SELECT e.* FROM estudiantes e
-      JOIN curso_estudiantes ce ON ce.estudiante_id = e.id
-      WHERE ce.curso_id = $1 ORDER BY e.nombre_completo
+      SELECT u.* FROM usuarios u
+      JOIN curso_estudiantes ce ON ce.estudiante_id = u.id
+      WHERE ce.curso_id = $1 ORDER BY u.nombre_completo
     `, [req.params.id]);
     res.json({ estudiantes: r.rows });
   } catch (err) { res.status(500).json({ error: err.message }); }
@@ -386,9 +411,9 @@ app.get('/api/cursos/:id/historial', async (req, res) => {
   try {
     const r = await pool.query(`
       SELECT a.id, a.estado, a.fecha_hora, a.sesion_id, a.estudiante_id, 
-             e.nombre_completo, e.codigo_estudiante, s.nombre_clase
+             u.nombre_completo, u.codigo, s.nombre_clase
       FROM asistencias a
-      JOIN estudiantes e ON e.id = a.estudiante_id
+      JOIN usuarios u ON u.id = a.estudiante_id
       JOIN sesiones_clase s ON s.id = a.sesion_id
       WHERE s.curso_id = $1
       ORDER BY a.fecha_hora DESC

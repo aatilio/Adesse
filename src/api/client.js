@@ -16,7 +16,7 @@ const request = async (method, path, body) => {
 
 export const api = {
   // Auth
-  login:          (codigo_estudiante) => request('POST', '/api/auth/login', { codigo_estudiante }),
+  login:          (codigo) => request('POST', '/api/auth/login', { codigo }),
 
   // Sesiones
   getSesionActiva:() => request('GET', '/api/sesiones/activa'),

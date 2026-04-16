@@ -1,9 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
-import { RefreshCw } from 'lucide-react';
-import { api } from '../api/client';
-
-const EXPIRY = 15;
 
 export default function QrGenerator({ sesion }) {
   const token = sesion.token_qr || '';

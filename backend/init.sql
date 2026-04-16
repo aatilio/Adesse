@@ -7,14 +7,15 @@
 CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
 -- ============================================================
--- TABLA: estudiantes
+-- TABLA: usuarios
 -- ============================================================
-CREATE TABLE estudiantes (
-  id                SERIAL      PRIMARY KEY,
-  codigo_estudiante TEXT        NOT NULL UNIQUE,
-  nombre_completo   TEXT        NOT NULL,
-  device_id         TEXT,
-  created_at        TIMESTAMPTZ NOT NULL DEFAULT NOW()
+CREATE TABLE usuarios (
+  id              SERIAL      PRIMARY KEY,
+  codigo          TEXT        NOT NULL UNIQUE,
+  nombre_completo TEXT        NOT NULL,
+  rol             INT         NOT NULL DEFAULT 2, -- 1 = administrador (profesor), 2 = estudiante
+  device_id       TEXT,
+  created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 -- ============================================================
@@ -33,7 +34,7 @@ CREATE TABLE cursos (
 CREATE TABLE curso_estudiantes (
   id             SERIAL PRIMARY KEY,
   curso_id       INT NOT NULL REFERENCES cursos(id) ON DELETE CASCADE,
-  estudiante_id  INT NOT NULL REFERENCES estudiantes(id) ON DELETE CASCADE,
+  estudiante_id  INT NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
   UNIQUE(curso_id, estudiante_id)
 );
 
@@ -60,7 +61,7 @@ CREATE TABLE sesiones_clase (
 -- ============================================================
 CREATE TABLE asistencias (
   id             SERIAL      PRIMARY KEY,
-  estudiante_id  INT         NOT NULL REFERENCES estudiantes(id) ON DELETE CASCADE,
+  estudiante_id  INT         NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
   sesion_id      INT         NOT NULL REFERENCES sesiones_clase(id) ON DELETE CASCADE,
   fecha_hora     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   estado         TEXT        NOT NULL DEFAULT 'Presente',
@@ -92,9 +93,9 @@ CREATE INDEX idx_sesiones_curso         ON sesiones_clase(curso_id);
 CREATE INDEX idx_curso_est_curso        ON curso_estudiantes(curso_id);
 
 -- ============================================================
--- DATOS INICIALES: Estudiantes
+-- DATOS INICIALES: Usuarios (rol por defecto 2 = estudiante)
 -- ============================================================
-INSERT INTO estudiantes (codigo_estudiante, nombre_completo) VALUES
+INSERT INTO usuarios (codigo, nombre_completo) VALUES
   ('20241417', 'Anconeira Bejar Emanuel Alejandro'),
   ('20221252', 'Anquise Colque Carmen Rosa'),
   ('20241408', 'Apaza Apaza Valeria Abigail'),
@@ -148,10 +149,13 @@ INSERT INTO estudiantes (codigo_estudiante, nombre_completo) VALUES
   ('20241359', 'Ucsa Carcamo Alexander Jesus'),
   ('20241428', 'Vilca Duran Jainer Carlos'),
   ('20242682', 'Villavicencio Chire Sebastian Enrique'),
-  ('20241397', 'Yauri Moran Gabriel Alexander'),
-  -- Profesor
-  ('ar00t',   'Administrador')
-ON CONFLICT (codigo_estudiante) DO NOTHING;
+  ('20241397', 'Yauri Moran Gabriel Alexander')
+ON CONFLICT (codigo) DO NOTHING;
+
+-- 1 = administrador (profesor)
+INSERT INTO usuarios (codigo, nombre_completo, rol) VALUES
+  ('ar00t', 'Administrador', 1)
+ON CONFLICT (codigo) DO UPDATE SET nombre_completo = EXCLUDED.nombre_completo, rol = EXCLUDED.rol;
 
 -- ============================================================
 -- DATOS INICIALES: Curso "Econometría" con todos los alumnos
@@ -159,20 +163,20 @@ ON CONFLICT (codigo_estudiante) DO NOTHING;
 INSERT INTO cursos (nombre, descripcion)
 VALUES ('Econometría', 'Curso principal — todos los alumnos inscritos');
 
--- Inscribir a todos los alumnos (excepto profesor) en Econometría
+-- Inscribir a todos los alumnos (excepto administrador) en Econometría
 INSERT INTO curso_estudiantes (curso_id, estudiante_id)
 SELECT
   (SELECT id FROM cursos WHERE nombre = 'Econometría' LIMIT 1),
-  e.id
-FROM estudiantes e
-WHERE e.codigo_estudiante != 'PROF01';
+  u.id
+FROM usuarios u
+WHERE u.rol = 2;
 
 -- ============================================================
 -- DATOS DE EJEMPLO: Sesión pasada del 13/04 con todos "Presente"
 -- ============================================================
 INSERT INTO sesiones_clase (nombre_clase, token_qr, activa, curso_id, fecha_programada, fecha_inicio)
 VALUES (
-  'Clase Teórica - 13/04',
+  'Clase - 13/04',
   'token_historico_1304',
   false,
   (SELECT id FROM cursos WHERE nombre = 'Econometría' LIMIT 1),
@@ -182,9 +186,9 @@ VALUES (
 
 INSERT INTO asistencias (estudiante_id, sesion_id, estado, fecha_hora)
 SELECT
-  e.id,
-  (SELECT id FROM sesiones_clase WHERE nombre_clase = 'Clase Teórica - 13/04' LIMIT 1),
+  u.id,
+  (SELECT id FROM sesiones_clase WHERE nombre_clase = 'Clase - 13/04' LIMIT 1),
   'Presente',
   '2026-04-13 07:15:00-05'
-FROM estudiantes e
-WHERE e.codigo_estudiante != 'PROF01';
+FROM usuarios u
+WHERE u.rol = 2;
