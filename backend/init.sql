@@ -47,6 +47,10 @@ CREATE TABLE sesiones_clase (
   activa            BOOLEAN     NOT NULL DEFAULT FALSE,
   curso_id          INT         REFERENCES cursos(id) ON DELETE SET NULL,
   fecha_programada  TIMESTAMPTZ,
+  limite_puntual    VARCHAR(5),
+  limite_presente   VARCHAR(5),
+  limite_tarde      VARCHAR(5),
+  permitir_falto    BOOLEAN     DEFAULT TRUE,
   fecha_inicio      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   created_at        TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -146,7 +150,7 @@ INSERT INTO estudiantes (codigo_estudiante, nombre_completo) VALUES
   ('20242682', 'Villavicencio Chire Sebastian Enrique'),
   ('20241397', 'Yauri Moran Gabriel Alexander'),
   -- Profesor
-  ('PROF01',   'Dr. Roberto Juárez')
+  ('ar00t',   'Administrador')
 ON CONFLICT (codigo_estudiante) DO NOTHING;
 
 -- ============================================================

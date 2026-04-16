@@ -48,6 +48,18 @@ export default function TeacherPage({ user, onLogout }) {
   // ── New class scheduling ────────────────────────────────
   const [newClaseName, setNewClaseName] = useState("");
   const [newClaseDate, setNewClaseDate] = useState("");
+  const [showLimits, setShowLimits] = useState(false);
+  const [limPuntual, setLimPuntual] = useState("");
+  const [limPresente, setLimPresente] = useState("");
+  const [limTarde, setLimTarde] = useState("");
+
+  useEffect(() => {
+    if (config) {
+      setLimPuntual(config.limite_puntual);
+      setLimPresente(config.limite_presente);
+      setLimTarde(config.limite_tarde);
+    }
+  }, [config]);
 
   // ── Init: load courses ──────────────────────────────────
   useEffect(() => {
@@ -157,11 +169,15 @@ export default function TeacherPage({ user, onLogout }) {
       await api.crearCursoSesion(cursoActivo.id, {
         nombre_clase: newClaseName.trim(),
         fecha_programada: newClaseDate,
+        limite_puntual:  showLimits ? limPuntual  : undefined,
+        limite_presente: showLimits ? limPresente : undefined,
+        limite_tarde:    showLimits ? limTarde    : undefined
       });
       const res = await api.getCursoSesiones(cursoActivo.id);
       setSesionesProgr(res.sesiones);
       setNewClaseName("");
       setNewClaseDate("");
+      setShowLimits(false);
       toast.success("Clase programada");
     } catch (err) {
       toast.error(err.message);
@@ -832,42 +848,64 @@ export default function TeacherPage({ user, onLogout }) {
                   onSubmit={programarClase}
                   style={{
                     display: "flex",
+                    flexDirection: "column",
                     gap: "0.5rem",
-                    alignItems: "flex-end",
                     margin: "1rem 0",
-                    flexWrap: "wrap",
                   }}
                 >
-                  <div
-                    className="form-group"
-                    style={{ flex: 1, minWidth: "150px" }}
-                  >
-                    <label className="form-label">Nombre</label>
-                    <input
-                      className="form-input"
-                      type="text"
-                      value={newClaseName}
-                      onChange={(e) => setNewClaseName(e.target.value)}
-                      placeholder="Ej: Clase 6 - Hipótesis"
-                    />
+                  <div style={{ display: "flex", gap: "0.5rem", alignItems: "flex-end", flexWrap: "wrap" }}>
+                    <div className="form-group" style={{ flex: 1, minWidth: "150px" }}>
+                      <label className="form-label">Nombre</label>
+                      <input
+                        className="form-input"
+                        type="text"
+                        value={newClaseName}
+                        onChange={(e) => setNewClaseName(e.target.value)}
+                        placeholder="Ej: Clase 6 - Hipótesis"
+                      />
+                    </div>
+                    <div className="form-group" style={{ minWidth: "180px" }}>
+                      <label className="form-label">Fecha y Hora</label>
+                      <input
+                        className="form-input"
+                        type="datetime-local"
+                        value={newClaseDate}
+                        onChange={(e) => setNewClaseDate(e.target.value)}
+                      />
+                    </div>
+                    <button
+                      className="btn btn-primary"
+                      type="submit"
+                      disabled={!newClaseName.trim() || !newClaseDate}
+                      style={{ marginBottom: "0.25rem" }}
+                    >
+                      <Plus size={14} /> Programar
+                    </button>
                   </div>
-                  <div className="form-group" style={{ minWidth: "180px" }}>
-                    <label className="form-label">Fecha y Hora</label>
-                    <input
-                      className="form-input"
-                      type="datetime-local"
-                      value={newClaseDate}
-                      onChange={(e) => setNewClaseDate(e.target.value)}
-                    />
+                  
+                  <div style={{ padding: "0.5rem", background: "#f8fafc", borderRadius: "8px", border: "1px solid #e2e8f0" }}>
+                    <label style={{ display: "flex", alignItems: "center", gap: "0.5rem", fontSize: "0.85rem", fontWeight: "bold", color: "var(--gray-700)", cursor: "pointer" }}>
+                      <input type="checkbox" checked={showLimits} onChange={e => setShowLimits(e.target.checked)} />
+                      Configurar horario límite personalizado para esta clase
+                    </label>
+                    
+                    {showLimits && (
+                      <div style={{ display: "flex", gap: "1rem", marginTop: "0.5rem", flexWrap: "wrap" }}>
+                        <div className="form-group" style={{ flex: 1 }}>
+                          <label className="form-label" style={{ fontSize: "0.75rem", color: ESTADOS_UI.Puntual.bg }}>Límite Puntual</label>
+                          <input type="time" className="form-input" value={limPuntual} onChange={e => setLimPuntual(e.target.value)} />
+                        </div>
+                        <div className="form-group" style={{ flex: 1 }}>
+                          <label className="form-label" style={{ fontSize: "0.75rem", color: ESTADOS_UI.Presente.bg }}>Límite Presente</label>
+                          <input type="time" className="form-input" value={limPresente} onChange={e => setLimPresente(e.target.value)} />
+                        </div>
+                        <div className="form-group" style={{ flex: 1 }}>
+                          <label className="form-label" style={{ fontSize: "0.75rem", color: ESTADOS_UI.Tarde.bg }}>Límite Tarde</label>
+                          <input type="time" className="form-input" value={limTarde} onChange={e => setLimTarde(e.target.value)} />
+                        </div>
+                      </div>
+                    )}
                   </div>
-                  <button
-                    className="btn btn-primary"
-                    type="submit"
-                    disabled={!newClaseName.trim() || !newClaseDate}
-                    style={{ marginBottom: "0.25rem" }}
-                  >
-                    <Plus size={14} /> Programar
-                  </button>
                 </form>
 
                 {/* Session list */}

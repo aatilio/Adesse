@@ -74,19 +74,29 @@ export default function StudentPage({ user, onLogout }) {
 
   // Determine valid statuses based on rules
   const getValidStatuses = () => {
-    if (!config) return [];
+    let limits = config;
+    if (sesionActiva && sesionActiva.limite_puntual) {
+      limits = {
+        limite_puntual: sesionActiva.limite_puntual,
+        limite_presente: sesionActiva.limite_presente,
+        limite_tarde: sesionActiva.limite_tarde,
+        permitir_falto: sesionActiva.permitir_falto ?? config?.permitir_falto
+      };
+    }
+
+    if (!limits) return [];
     const currentHM = currentTime.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', hour12: false });
     
     let valid = [];
-    if (currentHM <= config.limite_puntual) {
+    if (currentHM <= limits.limite_puntual) {
       valid.push('Puntual');
-    } else if (currentHM <= config.limite_presente) {
+    } else if (currentHM <= limits.limite_presente) {
       valid.push('Presente');
-    } else if (currentHM <= config.limite_tarde) {
+    } else if (currentHM <= limits.limite_tarde) {
       valid.push('Tarde');
     }
 
-    if (config.permitir_falto && currentHM > config.limite_tarde) {
+    if (limits.permitir_falto && currentHM > limits.limite_tarde) {
        valid.push('Falto');
     }
     return valid;
@@ -304,17 +314,26 @@ export default function StudentPage({ user, onLogout }) {
                       {validStatuses.length > 0 && (
                         <div className="card">
                           <div className="card-title">2. Identificación</div>
-                          {step === STEPS.SCANNING ? (
-                            <div id="qr-reader" style={{ borderRadius: '8px', overflow: 'hidden' }} />
+                           {step === STEPS.SCANNING ? (
+                            <div>
+                              <div id="qr-reader" style={{ borderRadius: '8px', overflow: 'hidden' }} />
+                              <button className="btn btn-ghost mt-2 btn-sm" onClick={stopScanner} style={{ width: '100%' }}>Cancelar Escaneo</button>
+                            </div>
                           ) : (
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                               <input 
-                                placeholder="CÓDIGO" className="form-input" 
+                                placeholder="CÓDIGO (8 DIGITOS)" className="form-input" 
                                 value={inputCode} onChange={e => setInputCode(e.target.value.toUpperCase())}
-                                style={{ textAlign: 'center', fontWeight: 'bold' }} maxLength={6}
+                                style={{ textAlign: 'center', letterSpacing: '2px', fontWeight: 'bold' }} maxLength={8}
                               />
-                              <button className="btn btn-primary" onClick={() => handleQrScan(inputCode)} disabled={loading || !estado || inputCode.length !== 6}>
-                                Confirmar Código
+                              <button className="btn btn-primary" onClick={() => handleQrScan(inputCode)} disabled={loading || !estado || inputCode.length !== 8}>
+                                {loading ? <div className="spinner" /> : 'Confirmar Código Manual'}
+                              </button>
+                              
+                              <div style={{ textAlign: 'center', fontSize: '0.7rem', color: 'var(--gray-400)', margin: '0.25rem 0' }}>— O —</div>
+
+                              <button className="btn btn-ghost btn-sm" onClick={startScanner} disabled={loading || !estado} style={{ width: '100%', border: '1px solid var(--gray-200)' }}>
+                                <QrCode size={16} style={{ marginRight: '6px' }} /> Escanear QR con Cámara
                               </button>
                             </div>
                           )}

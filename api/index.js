@@ -21,7 +21,12 @@ const pool = new Pool({
 });
 
 // ── Helpers ───────────────────────────────────────────────────
-const generateRandomCode = () => Math.random().toString(36).substring(2, 8).toUpperCase();
+const generateRandomCode = () => {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+  let result = '';
+  for (let i = 0; i < 8; i++) result += chars.charAt(Math.floor(Math.random() * chars.length));
+  return result;
+};
 
 // ── ROUTES ────────────────────────────────────────────────────
 
@@ -348,12 +353,15 @@ app.get('/api/cursos/:id/sesiones', async (req, res) => {
 
 // POST /api/cursos/:id/sesiones  (schedule a class)
 app.post('/api/cursos/:id/sesiones', async (req, res) => {
-  const { nombre_clase, fecha_programada } = req.body;
+  const { nombre_clase, fecha_programada, limite_puntual, limite_presente, limite_tarde, permitir_falto } = req.body;
   try {
     const token = generateRandomCode();
     const r = await pool.query(
-      'INSERT INTO sesiones_clase (nombre_clase, token_qr, activa, curso_id, fecha_programada) VALUES ($1, $2, false, $3, $4) RETURNING *',
-      [nombre_clase, token, req.params.id, fecha_programada]
+      `INSERT INTO sesiones_clase 
+        (nombre_clase, token_qr, activa, curso_id, fecha_programada, limite_puntual, limite_presente, limite_tarde, permitir_falto) 
+       VALUES ($1, $2, false, $3, $4, $5, $6, $7, $8) 
+       RETURNING *`,
+      [nombre_clase, token, req.params.id, fecha_programada, limite_puntual, limite_presente, limite_tarde, permitir_falto]
     );
     res.json({ sesion: r.rows[0] });
   } catch (err) { res.status(500).json({ error: err.message }); }
@@ -364,7 +372,7 @@ app.put('/api/sesiones/:id/activar', async (req, res) => {
   try {
     // Deactivate any other active session
     await pool.query('UPDATE sesiones_clase SET activa = false WHERE activa = true');
-    const token = generateQrToken(req.params.id);
+    const token = generateRandomCode();
     const r = await pool.query(
       'UPDATE sesiones_clase SET activa = true, token_qr = $1, fecha_inicio = NOW() WHERE id = $2 RETURNING *',
       [token, req.params.id]
