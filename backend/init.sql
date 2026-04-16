@@ -154,7 +154,7 @@ ON CONFLICT (codigo) DO NOTHING;
 
 -- 1 = administrador (profesor)
 INSERT INTO usuarios (codigo, nombre_completo, rol) VALUES
-  ('ar00t', 'Administrador', 1)
+  ('AR00T', 'Administrador', 1)
 ON CONFLICT (codigo) DO UPDATE SET nombre_completo = EXCLUDED.nombre_completo, rol = EXCLUDED.rol;
 
 -- ============================================================

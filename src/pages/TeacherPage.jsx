@@ -559,38 +559,17 @@ export default function TeacherPage({ user, onLogout }) {
       ) : (
         <>
           {/* COURSE VIEW: Header & Tabs */}
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "1rem",
-              marginBottom: "1rem",
-              marginTop: "1rem",
-            }}
-          >
+          <div className="teacher-course-toolbar">
             <button
-              className="btn btn-sm btn-ghost"
+              type="button"
+              className="btn btn-sm btn-ghost teacher-back-btn"
               onClick={() => setViewMode("dashboard")}
-              style={{
-                padding: "6px 10px",
-                background: "white",
-                border: "1px solid var(--gray-200)",
-              }}
             >
               « Volver a Cursos
             </button>
-            <h2
-              style={{
-                fontSize: "1.1rem",
-                margin: 0,
-                color: "var(--gray-800)",
-                display: "flex",
-                alignItems: "center",
-                gap: "0.5rem",
-              }}
-            >
-              <BookOpen size={18} style={{ color: "var(--primary)" }} />{" "}
-              {cursoActivo?.nombre}
+            <h2 className="teacher-course-title">
+              <BookOpen size={18} style={{ color: "var(--primary)", flexShrink: 0 }} />
+              <span className="teacher-course-title-text">{cursoActivo?.nombre}</span>
             </h2>
           </div>
 
@@ -672,29 +651,9 @@ export default function TeacherPage({ user, onLogout }) {
                   </form>
                 </div>
               ) : (
-                <div
-                  style={{
-                    display: "grid",
-                    gridTemplateColumns: "minmax(280px, 350px) 1fr",
-                    gap: "1rem",
-                    alignItems: "start",
-                  }}
-                >
-                  <div
-                    style={{
-                      display: "flex",
-                      flexDirection: "column",
-                      gap: "1rem",
-                    }}
-                  >
-                    <div
-                      className="session-chip"
-                      style={{
-                        width: "100%",
-                        justifyContent: "space-between",
-                        padding: "0.5rem 1rem",
-                      }}
-                    >
+                <div className="teacher-live-grid">
+                  <div className="teacher-live-col-qr">
+                    <div className="session-chip session-chip--live">
                       <div
                         style={{
                           display: "flex",
@@ -706,25 +665,20 @@ export default function TeacherPage({ user, onLogout }) {
                         <strong>{sesion.nombre_clase}</strong>
                       </div>
                       <button
-                        className="btn btn-danger btn-sm"
+                        type="button"
+                        className="btn btn-danger btn-sm session-chip-end"
                         onClick={cerrarSesion}
-                        style={{ padding: "4px 8px" }}
                       >
                         <StopCircle size={13} /> Terminar
                       </button>
                     </div>
                     <div
-                      className="card"
-                      style={{
-                        margin: 0,
-                        display: "flex",
-                        justifyContent: "center",
-                      }}
+                      className="card teacher-qr-card"
                     >
                       <QrGenerator sesion={sesion} />
                     </div>
                   </div>
-                  <div className="card" style={{ margin: 0 }}>
+                  <div className="card teacher-attendance-card">
                     <AttendanceTable
                       sesionId={sesion.id}
                       asistencias={asistencias}

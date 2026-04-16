@@ -134,6 +134,112 @@ body {
   overflow-y: auto;
 }
 
+@media (max-width: 640px) {
+  .page-body {
+    padding: var(--space-4);
+  }
+
+  .page-header {
+    padding: var(--space-4) var(--space-4);
+    flex-wrap: wrap;
+    gap: var(--space-3);
+  }
+
+  .tabs {
+    padding-left: var(--space-4);
+    padding-right: var(--space-4);
+  }
+}
+
+/* ── Panel docente: curso (móvil) ─────────────────────────── */
+.teacher-course-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--space-3);
+  width: 100%;
+  box-sizing: border-box;
+  padding: var(--space-4) var(--space-6) var(--space-2);
+  margin: 0;
+}
+
+@media (max-width: 640px) {
+  .teacher-course-toolbar {
+    padding: var(--space-4) var(--space-4) var(--space-2);
+    gap: var(--space-4);
+  }
+}
+
+.btn.teacher-back-btn {
+  padding: 0.65rem 1.15rem;
+  min-height: 44px;
+  align-self: flex-start;
+  background: white;
+  border: 1px solid var(--gray-200);
+  font-weight: 600;
+  font-size: var(--text-sm);
+  box-sizing: border-box;
+}
+
+.teacher-course-title {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  margin: 0;
+  min-width: 0;
+  flex: 1 1 10rem;
+  color: var(--gray-800);
+  font-size: clamp(1rem, 3.5vw, 1.15rem);
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.teacher-course-title-text {
+  min-width: 0;
+  word-break: break-word;
+}
+
+.teacher-live-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-4);
+  align-items: stretch;
+  width: 100%;
+}
+
+@media (min-width: 900px) {
+  .teacher-live-grid {
+    grid-template-columns: minmax(260px, 380px) minmax(0, 1fr);
+    align-items: start;
+  }
+}
+
+.teacher-live-col-qr {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  min-width: 0;
+}
+
+.teacher-qr-card {
+  margin: 0;
+  display: flex;
+  justify-content: center;
+  padding: var(--space-4);
+  overflow: hidden;
+}
+
+@media (max-width: 639px) {
+  .teacher-qr-card {
+    padding: var(--space-3);
+  }
+}
+
+.teacher-attendance-card {
+  margin: 0;
+  min-width: 0;
+}
+
 /* ── Cards ───────────────────────────────────── */
 .card {
   background: var(--white);
@@ -354,6 +460,15 @@ body {
   background: white;
   border-radius: var(--radius-xl);
   border: 2px solid var(--gray-100);
+}
+
+.qr-manual-copy:not(:disabled):hover {
+  filter: brightness(0.97);
+  box-shadow: 0 2px 12px rgba(15, 23, 42, 0.08);
+}
+
+.qr-manual-copy:not(:disabled):active {
+  transform: scale(0.995);
 }
 
 .qr-countdown {
@@ -685,6 +800,26 @@ body {
   font-weight: 600;
   width: 100%;
   justify-content: center;
+}
+
+.session-chip.session-chip--live {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  row-gap: var(--space-2);
+  column-gap: var(--space-3);
+  border-radius: var(--radius-lg);
+  padding: 0.5rem 1rem;
+}
+
+.session-chip.session-chip--live > div:first-child {
+  flex: 1;
+  min-width: 0;
+}
+
+.session-chip.session-chip--live .session-chip-end {
+  flex-shrink: 0;
 }
 
 /* ── Animations ──────────────────────────────── */
