@@ -618,18 +618,71 @@ th.sticky-column {
   font-size: var(--text-sm);
   font-weight: 600;
   color: var(--gray-600);
-  transition: all var(--transition);
+  transition: all 0.2s ease;
 }
 
-.status-option:hover {
-  border-color: var(--primary-light);
-  background: var(--primary-bg);
+.status-option:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+  pointer-events: none;
+  background: var(--gray-100) !important;
+  border-color: var(--gray-200) !important;
+  color: var(--gray-400) !important;
+  box-shadow: none !important;
 }
 
-.status-option.selected {
-  border-color: var(--primary);
-  background: var(--primary-bg);
-  color: var(--primary-dark);
+/* ── Per-status colors (resting state) */
+.status-option[data-estado="Puntual"] {
+  border-color: #6ee7b7;
+  background: #f0fdf4;
+  color: #065f46;
+}
+.status-option[data-estado="Presente"] {
+  border-color: #93c5fd;
+  background: #eff6ff;
+  color: #1e40af;
+}
+.status-option[data-estado="Tarde"] {
+  border-color: #fcd34d;
+  background: #fffbeb;
+  color: #92400e;
+}
+.status-option[data-estado="Justificado"] {
+  border-color: #d1d5db;
+  background: #f9fafb;
+  color: #374151;
+}
+.status-option[data-estado="Falto"] {
+  border-color: #fca5a5;
+  background: #fff1f2;
+  color: #991b1b;
+}
+
+/* ── Selected states */
+.status-option[data-estado="Puntual"].selected {
+  background: #d1fae5;
+  border-color: #10b981;
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2);
+}
+.status-option[data-estado="Presente"].selected {
+  background: #dbeafe;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+}
+.status-option[data-estado="Tarde"].selected {
+  background: #fef3c7;
+  border-color: #f59e0b;
+  box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.2);
+}
+.status-option[data-estado="Justificado"].selected {
+  background: #f3f4f6;
+  border-color: #6b7280;
+  box-shadow: 0 0 0 3px rgba(107, 114, 128, 0.2);
+}
+.status-option[data-estado="Falto"].selected {
+  background: #fee2e2;
+  border-color: #ef4444;
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.2);
 }
 
 /* ── Login Screen ────────────────────────────── */

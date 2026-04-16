@@ -303,6 +303,7 @@ export default function StudentPage({ user, onLogout }) {
                                return (
                                  <button key={e} type="button" disabled={!isAutoEnabled}
                                    className={`status-option${estado === e ? ' selected' : ''}`}
+                                   data-estado={e}
                                    onClick={() => setEstado(e)}
                                  >{e}</button>
                                );

@@ -938,30 +938,33 @@ export default function TeacherPage({ user, onLogout }) {
                       <div key={s.id}>
                         {editingSesion === s.id ? (
                           <form onSubmit={saveEditedSesion} style={{ display: "flex", flexDirection: "column", gap: "0.75rem", padding: "1rem", background: "#f8fafc", borderRadius: "8px", border: "1px solid #cbd5e1", marginBottom: "0.5rem" }}>
-                            <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap", alignItems: "flex-end" }}>
-                              <div className="form-group" style={{ flex: 1, minWidth: "150px" }}>
+                            {/* Fila 1: Nombre + Fecha */}
+                            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.5rem" }}>
+                              <div className="form-group">
                                 <label className="form-label" style={{ fontSize: "0.75rem" }}>Nombre</label>
                                 <input type="text" className="form-input" value={editSesionData.nombre_clase} onChange={e => setEditSesionData({...editSesionData, nombre_clase: e.target.value})} required />
                               </div>
-                              <div className="form-group" style={{ flex: 1, minWidth: "150px" }}>
+                              <div className="form-group">
                                 <label className="form-label" style={{ fontSize: "0.75rem" }}>Fecha</label>
                                 <input type="datetime-local" className="form-input" value={editSesionData.fecha_programada} onChange={e => setEditSesionData({...editSesionData, fecha_programada: e.target.value})} required />
                               </div>
                             </div>
-                            <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
-                              <div className="form-group" style={{ flex: 1 }}>
-                                <label className="form-label" style={{ fontSize: "0.75rem", color: ESTADOS_UI.Puntual.bg }}>Límite Puntual</label>
+                            {/* Fila 2: Tres límites */}
+                            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "0.5rem" }}>
+                              <div className="form-group">
+                                <label className="form-label" style={{ fontSize: "0.75rem", color: "#059669" }}>Límite Puntual</label>
                                 <input type="time" className="form-input" value={editSesionData.limite_puntual} onChange={e => setEditSesionData({...editSesionData, limite_puntual: e.target.value})} />
                               </div>
-                              <div className="form-group" style={{ flex: 1 }}>
-                                <label className="form-label" style={{ fontSize: "0.75rem", color: ESTADOS_UI.Presente.bg }}>Límite Presente</label>
+                              <div className="form-group">
+                                <label className="form-label" style={{ fontSize: "0.75rem", color: "#2563eb" }}>Límite Presente</label>
                                 <input type="time" className="form-input" value={editSesionData.limite_presente} onChange={e => setEditSesionData({...editSesionData, limite_presente: e.target.value})} />
                               </div>
-                              <div className="form-group" style={{ flex: 1 }}>
-                                <label className="form-label" style={{ fontSize: "0.75rem", color: ESTADOS_UI.Tarde.bg }}>Límite Tarde</label>
+                              <div className="form-group">
+                                <label className="form-label" style={{ fontSize: "0.75rem", color: "#d97706" }}>Límite Tarde</label>
                                 <input type="time" className="form-input" value={editSesionData.limite_tarde} onChange={e => setEditSesionData({...editSesionData, limite_tarde: e.target.value})} />
                               </div>
                             </div>
+                            {/* Acciones */}
                             <div style={{ display: "flex", gap: "0.5rem", justifyContent: "flex-end" }}>
                               <button type="button" className="btn btn-sm btn-ghost" onClick={() => setEditingSesion(null)}>Cancelar</button>
                               <button type="submit" className="btn btn-sm btn-primary">Guardar Cambios</button>
