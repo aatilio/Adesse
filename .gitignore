@@ -18,11 +18,12 @@ pgdata/
 .env.development.local
 .env.test.local
 .env.production.local
+# Base de datos (Ignorar scripts con datos reales)
+backend/init.sql
 pgdata/
 postgres-data/
 *.db
 *.sqlite
-# Ignorar solo archivos SQL de datos, pero permitir scripts de inicialización
 data/*.sql
 dump.sql
 
