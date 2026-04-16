@@ -63,6 +63,7 @@ export default function TeacherPage({ user, onLogout }) {
     limite_presente: "",
     limite_tarde: ""
   });
+  const [confirmDeleteId, setConfirmDeleteId] = useState(null);
 
   useEffect(() => {
     if (config) {
@@ -269,7 +270,13 @@ export default function TeacherPage({ user, onLogout }) {
     }
   };
 
-  const eliminarSesionProgramada = async (id) => {
+  const eliminarSesionProgramada = (id) => {
+    setConfirmDeleteId(id); // abre el modal de confirmación
+  };
+
+  const confirmarEliminar = async () => {
+    const id = confirmDeleteId;
+    setConfirmDeleteId(null);
     try {
       await api.cerrarSesion(id);
       setSesionesProgr((prev) => prev.filter((s) => s.id !== id));
@@ -405,6 +412,47 @@ export default function TeacherPage({ user, onLogout }) {
 
   return (
     <div className="app-shell">
+      {/* ── Modal Confirmar Eliminar Sesión ──────────── */}
+      {confirmDeleteId && (
+        <div style={{
+          position: "fixed", inset: 0, zIndex: 9000,
+          background: "rgba(15,23,42,0.55)",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          padding: "1rem",
+        }}>
+          <div style={{
+            background: "white", borderRadius: "16px",
+            padding: "2rem", maxWidth: "420px", width: "100%",
+            boxShadow: "0 25px 50px -12px rgba(0,0,0,0.35)",
+            animation: "slideIn 0.2s ease",
+          }}>
+            <div style={{ fontSize: "2.5rem", textAlign: "center", marginBottom: "0.75rem" }}>🗑️</div>
+            <h3 style={{ margin: "0 0 0.5rem", color: "var(--gray-900)", textAlign: "center", fontSize: "1.1rem", fontWeight: 700 }}>
+              ¿Eliminar esta clase?
+            </h3>
+            <p style={{ fontSize: "0.85rem", color: "var(--gray-500)", textAlign: "center", margin: "0 0 1.5rem", lineHeight: 1.6 }}>
+              Esta acción es <strong style={{ color: "var(--danger)" }}>irreversible</strong>.<br/>
+              Se eliminarán también todos los registros de asistencia asociados a esta clase.
+            </p>
+            <div style={{ display: "flex", gap: "0.75rem" }}>
+              <button
+                className="btn btn-ghost"
+                onClick={() => setConfirmDeleteId(null)}
+                style={{ flex: 1 }}
+              >
+                Cancelar
+              </button>
+              <button
+                className="btn btn-danger"
+                onClick={confirmarEliminar}
+                style={{ flex: 1 }}
+              >
+                Sí, eliminar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       {/* Header */}
       <div className="page-header" style={{ justifyContent: "space-between" }}>
         <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>

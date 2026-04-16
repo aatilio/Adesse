@@ -105,7 +105,12 @@ app.post('/api/sesiones', async (req, res) => {
 // DELETE /api/sesiones/:id
 app.delete('/api/sesiones/:id', async (req, res) => {
   try {
-    await pool.query('UPDATE sesiones_clase SET activa = false WHERE id = $1', [req.params.id]);
+    const { id } = req.params;
+    // Eliminar asistencias relacionadas primero (FK)
+    await pool.query('DELETE FROM asistencias WHERE sesion_id = $1', [id]);
+    // Eliminar la sesión
+    const r = await pool.query('DELETE FROM sesiones_clase WHERE id = $1 RETURNING id', [id]);
+    if (r.rowCount === 0) return res.status(404).json({ error: 'Sesión no encontrada' });
     res.json({ ok: true });
   } catch (err) {
     res.status(500).json({ error: err.message });
