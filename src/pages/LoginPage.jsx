@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { GraduationCap, ChevronRight } from "lucide-react";
+import { GraduationCap, ChevronRight, Eye, EyeOff } from "lucide-react";
 import { api } from "../api/client";
 import { toast } from "../components/Toast";
 import { mapRolToUiRole } from "../constants/roles";
@@ -7,6 +7,7 @@ import { mapRolToUiRole } from "../constants/roles";
 export default function LoginPage({ onLogin }) {
   const [codigo, setCodigo] = useState("");
   const [loading, setLoading] = useState(false);
+  const [showCode, setShowCode] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -46,16 +47,42 @@ export default function LoginPage({ onLogin }) {
         <form onSubmit={handleSubmit}>
           <div className="form-group">
             <label className="form-label">Código de acceso</label>
-            <input
-              className="form-input"
-              type="text"
-              autoFocus
-              spellCheck={false}
-              autoComplete="username"
-              value={codigo}
-              onChange={(e) => setCodigo(e.target.value.toUpperCase())}
-              placeholder="CUI"
-            />
+            <div style={{ position: "relative" }}>
+              <input
+                className="form-input"
+                type={showCode ? "text" : "password"}
+                autoFocus
+                spellCheck={false}
+                autoComplete="username"
+                value={codigo}
+                onChange={(e) => setCodigo(e.target.value.toUpperCase())}
+                placeholder="CUI"
+                style={{ paddingRight: "2.8rem" }}
+              />
+              <button
+                type="button"
+                onClick={() => setShowCode(v => !v)}
+                aria-label={showCode ? "Ocultar código" : "Mostrar código"}
+                style={{
+                  position: "absolute",
+                  right: "0.8rem",
+                  top: "50%",
+                  transform: "translateY(-50%)",
+                  background: "none",
+                  border: "none",
+                  cursor: "pointer",
+                  color: "var(--gray-400)",
+                  display: "flex",
+                  alignItems: "center",
+                  padding: "0",
+                  transition: "color 0.15s ease",
+                }}
+                onMouseEnter={e => e.currentTarget.style.color = "var(--primary)"}
+                onMouseLeave={e => e.currentTarget.style.color = "var(--gray-400)"}
+              >
+                {showCode ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
+            </div>
           </div>
 
           <div style={{ marginTop: "1.5rem" }}>
@@ -75,30 +102,35 @@ export default function LoginPage({ onLogin }) {
           </div>
         </form>
 
-        <p
+        <div
           style={{
-            fontSize: "10px",
+            fontSize: "11px",
             color: "var(--gray-400)",
             textAlign: "center",
-            marginTop: "1rem",
+            marginTop: "2rem",
+            lineHeight: "1.6",
+            opacity: 0.8
           }}
         >
-          Copyright &copy; {new Date().getFullYear()}{" "}
-          <a href="./" style={{ color: "inherit", textDecoration: "none" }}>
-            <b>Adesse</b>
-          </a>.
-          <b>
-            Desarrollado por{" "}
+          <div>
+            &copy; {new Date().getFullYear()}{" "}
+            <a href="./" style={{ color: "var(--gray-600)", textDecoration: "none", fontWeight: "700" }}>
+              Adesse
+            </a>
+            {" • "} Todos los derechos reservados
+          </div>
+          <div style={{ marginTop: "4px" }}>
+            Desarrollado con ❤️ por{" "}
             <a
               href="https://alan.arahocorp.com/"
               target="_blank"
               rel="noopener noreferrer"
-              style={{ color: "inherit" }}
+              style={{ color: "var(--primary)", fontWeight: "600", textDecoration: "none" }}
             >
               Alan C.A.
             </a>
-          </b>
-        </p>
+          </div>
+        </div>
       </div>
     </div>
   );
