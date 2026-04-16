@@ -26,6 +26,15 @@ const pool = new Pool({
   ssl: process.env.DATABASE_URL ? { rejectUnauthorized: false } : false,
 });
 
+// Test de conexión inicial
+pool.query('SELECT NOW()', (err) => {
+  if (err) {
+    console.error("❌ Error inicial de conexión a la BD:", err.message);
+  } else {
+    console.log("✅ Conexión a la base de datos establecida correctamente.");
+  }
+});
+
 // ── Helpers ───────────────────────────────────────────────────
 const generateRandomCode = () => {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';

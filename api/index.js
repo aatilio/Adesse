@@ -19,9 +19,24 @@ app.use(cors());
 app.use(express.json());
 
 // ── Database Pool ─────────────────────────────────────────────
+if (!process.env.DATABASE_URL) {
+  console.warn("⚠️ DATABASE_URL no está definida. Se intentará conectar a localhost (esto fallará en Vercel).");
+}
+
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: { rejectUnauthorized: false }
+  connectionString:
+    process.env.DATABASE_URL ||
+    `postgresql://root:rootpassword@${process.env.DB_HOST || 'localhost'}:5432/asistenciadb`,
+  ssl: process.env.DATABASE_URL ? { rejectUnauthorized: false } : false,
+});
+
+// Test de conexión inicial
+pool.query('SELECT NOW()', (err) => {
+  if (err) {
+    console.error("❌ Error inicial de conexión a la BD:", err.message);
+  } else {
+    console.log("✅ Conexión a la base de datos establecida correctamente.");
+  }
 });
 
 // ── Helpers ───────────────────────────────────────────────────
