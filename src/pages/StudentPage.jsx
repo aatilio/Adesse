@@ -226,7 +226,7 @@ export default function StudentPage({ user, onLogout }) {
                 {historial.filter(h => h.curso_id === cursoActivo.id).length === 0 ? <p className="text-muted text-center mt-4">No hay asistencias.</p> : (
                   historial.filter(h => h.curso_id === cursoActivo.id).map(h => (
                     <div key={h.id} className="attendance-item">
-                      <span className={`badge badge-${h.estado.toLowerCase()}`}>{h.estado}</span>
+                      <span className={`badge-status ${h.estado.toLowerCase()}`}>{h.estado}</span>
                       <div className="attendance-item-info" style={{ flexDirection: 'row', justifyContent: 'space-between', width: '100%' }}>
                         <span>{h.nombre_clase}</span>
                         <span className="attendance-item-time">{fmtFecha(h.fecha_hora)} - {fmtHora(h.fecha_hora)}</span>

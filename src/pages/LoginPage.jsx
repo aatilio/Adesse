@@ -1,8 +1,5 @@
 import { useState } from "react";
-import {
-  ClipboardList,
-  ChevronRight,
-} from "lucide-react";
+import { GraduationCap, ChevronRight } from "lucide-react";
 import { api } from "../api/client";
 import { toast } from "../components/Toast";
 import { mapRolToUiRole } from "../constants/roles";
@@ -36,15 +33,12 @@ export default function LoginPage({ onLogin }) {
     <div className="login-screen">
       <div className="login-card">
         {/* Logo */}
-        <div className="login-logo">
+        <div className="login-logo" style={{ textAlign: "center" }}>
           <div className="login-logo-icon">
-            <ClipboardList size={30} />
+            <GraduationCap size={32} strokeWidth={2.5} />
           </div>
-          <div>
-            <div className="login-logo-title">ADESSE</div>
-            <div className="login-logo-sub">
-              Asistencia Digital Estratégica para el Sector Educativo
-            </div>
+          <div className="login-logo-title" style={{ margin: "0.5rem 0 0" }}>
+            ADESSE
           </div>
         </div>
 
@@ -60,7 +54,7 @@ export default function LoginPage({ onLogin }) {
               autoComplete="username"
               value={codigo}
               onChange={(e) => setCodigo(e.target.value.toUpperCase())}
-              placeholder="CUI o código de administrador"
+              placeholder="CUI"
             />
           </div>
 
@@ -92,16 +86,16 @@ export default function LoginPage({ onLogin }) {
           Copyright &copy; {new Date().getFullYear()}{" "}
           <a href="./" style={{ color: "inherit", textDecoration: "none" }}>
             <b>Adesse</b>
-          </a>
-          . Todos los derechos reservados. Desarrollado por{" "}
+          </a>.
           <b>
+            Desarrollado por{" "}
             <a
               href="https://alan.arahocorp.com/"
               target="_blank"
               rel="noopener noreferrer"
               style={{ color: "inherit" }}
             >
-              Arahocorp
+              Alan C.A.
             </a>
           </b>
         </p>

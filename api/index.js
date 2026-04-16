@@ -112,6 +112,22 @@ app.delete('/api/sesiones/:id', async (req, res) => {
   }
 });
 
+// PUT /api/sesiones/:id
+app.put('/api/sesiones/:id', async (req, res) => {
+  const { nombre_clase, fecha_programada, limite_puntual, limite_presente, limite_tarde } = req.body;
+  try {
+    const r = await pool.query(
+      `UPDATE sesiones_clase 
+       SET nombre_clase = $1, fecha_programada = $2, limite_puntual = $3, limite_presente = $4, limite_tarde = $5
+       WHERE id = $6 RETURNING *`,
+      [nombre_clase, fecha_programada, limite_puntual, limite_presente, limite_tarde, req.params.id]
+    );
+    res.json({ sesion: r.rows[0] });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // PUT /api/sesiones/:id/token
 app.put('/api/sesiones/:id/token', async (req, res) => {
   const { id } = req.params;

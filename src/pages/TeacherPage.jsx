@@ -14,6 +14,7 @@ import {
   Play,
   UserPlus,
   X,
+  Edit,
 } from "lucide-react";
 import { api } from "../api/client";
 import { ROL } from "../constants/roles";
@@ -53,6 +54,15 @@ export default function TeacherPage({ user, onLogout }) {
   const [limPuntual, setLimPuntual] = useState("");
   const [limPresente, setLimPresente] = useState("");
   const [limTarde, setLimTarde] = useState("");
+
+  const [editingSesion, setEditingSesion] = useState(null);
+  const [editSesionData, setEditSesionData] = useState({
+    nombre_clase: "",
+    fecha_programada: "",
+    limite_puntual: "",
+    limite_presente: "",
+    limite_tarde: ""
+  });
 
   useEffect(() => {
     if (config) {
@@ -180,6 +190,56 @@ export default function TeacherPage({ user, onLogout }) {
       setNewClaseDate("");
       setShowLimits(false);
       toast.success("Clase programada");
+    } catch (err) {
+      toast.error(err.message);
+    }
+  };
+
+  const openEditForm = (sesion) => {
+    setEditingSesion(sesion.id);
+    let formattedDate = "";
+    if (sesion.fecha_programada) {
+      const d = new Date(sesion.fecha_programada);
+      const yyyy = d.getFullYear();
+      const MM = String(d.getMonth() + 1).padStart(2, '0');
+      const dd = String(d.getDate()).padStart(2, '0');
+      const hh = String(d.getHours()).padStart(2, '0');
+      const mm = String(d.getMinutes()).padStart(2, '0');
+      formattedDate = `${yyyy}-${MM}-${dd}T${hh}:${mm}`;
+    } else if (sesion.fecha_inicio) {
+      const d = new Date(sesion.fecha_inicio);
+      const yyyy = d.getFullYear();
+      const MM = String(d.getMonth() + 1).padStart(2, '0');
+      const dd = String(d.getDate()).padStart(2, '0');
+      const hh = String(d.getHours()).padStart(2, '0');
+      const mm = String(d.getMinutes()).padStart(2, '0');
+      formattedDate = `${yyyy}-${MM}-${dd}T${hh}:${mm}`;
+    }
+    
+    setEditSesionData({
+      nombre_clase: sesion.nombre_clase || "",
+      fecha_programada: formattedDate,
+      limite_puntual: sesion.limite_puntual || config?.limite_puntual || "",
+      limite_presente: sesion.limite_presente || config?.limite_presente || "",
+      limite_tarde: sesion.limite_tarde || config?.limite_tarde || ""
+    });
+  };
+
+  const saveEditedSesion = async (e) => {
+    e.preventDefault();
+    if (!editSesionData.nombre_clase.trim() || !editSesionData.fecha_programada) return;
+    try {
+      await api.updateSesion(editingSesion, {
+        nombre_clase: editSesionData.nombre_clase.trim(),
+        fecha_programada: editSesionData.fecha_programada,
+        limite_puntual: editSesionData.limite_puntual,
+        limite_presente: editSesionData.limite_presente,
+        limite_tarde: editSesionData.limite_tarde
+      });
+      const res = await api.getCursoSesiones(cursoActivo.id);
+      setSesionesProgr(res.sesiones);
+      setEditingSesion(null);
+      toast.success("Clase actualizada con éxito");
     } catch (err) {
       toast.error(err.message);
     }
@@ -609,7 +669,7 @@ export default function TeacherPage({ user, onLogout }) {
           <div className="page-body" style={{ width: "100%" }}>
             {/* ─── MONITOR EN VIVO ─────────────────────── */}
             {activeTab === "vivo" &&
-              (!sesion ? (
+              (!sesion || sesion.curso_id !== cursoActivo?.id ? (
                 <div
                   className="card"
                   style={{ maxWidth: 480, margin: "0 auto" }}
@@ -875,71 +935,114 @@ export default function TeacherPage({ user, onLogout }) {
                     }}
                   >
                     {sesionesProgr.map((s) => (
-                      <div
-                        key={s.id}
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "space-between",
-                          gap: "1rem",
-                          padding: "0.75rem 1rem",
-                          background: s.activa ? "#ecfdf5" : "#f9fafb",
-                          borderRadius: "8px",
-                          border: `1px solid ${s.activa ? "#86efac" : "#e5e7eb"}`,
-                        }}
-                      >
-                        <div
-                          style={{ display: "flex", flexDirection: "column" }}
-                        >
-                          <strong style={{ fontSize: "0.9rem" }}>
-                            {s.nombre_clase}
-                          </strong>
-                          <span
+                      <div key={s.id}>
+                        {editingSesion === s.id ? (
+                          <form onSubmit={saveEditedSesion} style={{ display: "flex", flexDirection: "column", gap: "0.75rem", padding: "1rem", background: "#f8fafc", borderRadius: "8px", border: "1px solid #cbd5e1", marginBottom: "0.5rem" }}>
+                            <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap", alignItems: "flex-end" }}>
+                              <div className="form-group" style={{ flex: 1, minWidth: "150px" }}>
+                                <label className="form-label" style={{ fontSize: "0.75rem" }}>Nombre</label>
+                                <input type="text" className="form-input" value={editSesionData.nombre_clase} onChange={e => setEditSesionData({...editSesionData, nombre_clase: e.target.value})} required />
+                              </div>
+                              <div className="form-group" style={{ flex: 1, minWidth: "150px" }}>
+                                <label className="form-label" style={{ fontSize: "0.75rem" }}>Fecha</label>
+                                <input type="datetime-local" className="form-input" value={editSesionData.fecha_programada} onChange={e => setEditSesionData({...editSesionData, fecha_programada: e.target.value})} required />
+                              </div>
+                            </div>
+                            <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
+                              <div className="form-group" style={{ flex: 1 }}>
+                                <label className="form-label" style={{ fontSize: "0.75rem", color: ESTADOS_UI.Puntual.bg }}>Límite Puntual</label>
+                                <input type="time" className="form-input" value={editSesionData.limite_puntual} onChange={e => setEditSesionData({...editSesionData, limite_puntual: e.target.value})} />
+                              </div>
+                              <div className="form-group" style={{ flex: 1 }}>
+                                <label className="form-label" style={{ fontSize: "0.75rem", color: ESTADOS_UI.Presente.bg }}>Límite Presente</label>
+                                <input type="time" className="form-input" value={editSesionData.limite_presente} onChange={e => setEditSesionData({...editSesionData, limite_presente: e.target.value})} />
+                              </div>
+                              <div className="form-group" style={{ flex: 1 }}>
+                                <label className="form-label" style={{ fontSize: "0.75rem", color: ESTADOS_UI.Tarde.bg }}>Límite Tarde</label>
+                                <input type="time" className="form-input" value={editSesionData.limite_tarde} onChange={e => setEditSesionData({...editSesionData, limite_tarde: e.target.value})} />
+                              </div>
+                            </div>
+                            <div style={{ display: "flex", gap: "0.5rem", justifyContent: "flex-end" }}>
+                              <button type="button" className="btn btn-sm btn-ghost" onClick={() => setEditingSesion(null)}>Cancelar</button>
+                              <button type="submit" className="btn btn-sm btn-primary">Guardar Cambios</button>
+                            </div>
+                          </form>
+                        ) : (
+                          <div
                             style={{
-                              fontSize: "0.75rem",
-                              color: "var(--gray-500)",
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "space-between",
+                              gap: "1rem",
+                              padding: "0.75rem 1rem",
+                              background: s.activa ? "#ecfdf5" : "#f9fafb",
+                              borderRadius: "8px",
+                              border: `1px solid ${s.activa ? "#86efac" : "#e5e7eb"}`,
+                              marginBottom: "0.5rem"
                             }}
                           >
-                            {s.fecha_programada
-                              ? fmtFecha(s.fecha_programada)
-                              : fmtFecha(s.fecha_inicio)}
-                            {s.total_asistencias > 0 &&
-                              ` • ${s.total_asistencias} registros`}
-                          </span>
-                        </div>
-                        <div
-                          style={{
-                            display: "flex",
-                            gap: "0.5rem",
-                            alignItems: "center",
-                          }}
-                        >
-                          {s.activa ? (
-                            <span
-                              className="badge"
+                            <div
+                              style={{ display: "flex", flexDirection: "column" }}
+                            >
+                              <strong style={{ fontSize: "0.9rem" }}>
+                                {s.nombre_clase}
+                              </strong>
+                              <span
+                                style={{
+                                  fontSize: "0.75rem",
+                                  color: "var(--gray-500)",
+                                }}
+                              >
+                                {s.fecha_programada
+                                  ? fmtFecha(s.fecha_programada)
+                                  : fmtFecha(s.fecha_inicio)}
+                                {s.total_asistencias > 0 &&
+                                  ` • ${s.total_asistencias} registros`}
+                              </span>
+                            </div>
+                            <div
                               style={{
-                                background: "#dcfce7",
-                                color: "#16a34a",
+                                display: "flex",
+                                gap: "0.5rem",
+                                alignItems: "center",
                               }}
                             >
-                              EN VIVO
-                            </span>
-                          ) : (
-                            <button
-                              className="btn btn-sm btn-primary"
-                              onClick={() => activarSesion(s.id)}
-                            >
-                              <Play size={12} /> Iniciar
-                            </button>
-                          )}
-                          <button
-                            className="btn btn-sm btn-ghost"
-                            onClick={() => eliminarSesionProgramada(s.id)}
-                            style={{ color: "#ef4444", padding: "4px" }}
-                          >
-                            <Trash2 size={14} />
-                          </button>
-                        </div>
+                              {s.activa ? (
+                                <span
+                                  className="badge"
+                                  style={{
+                                    background: "#dcfce7",
+                                    color: "#16a34a",
+                                  }}
+                                >
+                                  EN VIVO
+                                </span>
+                              ) : (
+                                <button
+                                  className="btn btn-sm btn-primary"
+                                  onClick={() => activarSesion(s.id)}
+                                >
+                                  <Play size={12} /> Iniciar
+                                </button>
+                              )}
+                              <button
+                                className="btn btn-sm btn-ghost"
+                                onClick={() => openEditForm(s)}
+                                style={{ color: "var(--gray-600)", padding: "4px" }}
+                                title="Editar clase"
+                              >
+                                <Edit size={14} />
+                              </button>
+                              <button
+                                className="btn btn-sm btn-ghost"
+                                onClick={() => eliminarSesionProgramada(s.id)}
+                                style={{ color: "#ef4444", padding: "4px" }}
+                              >
+                                <Trash2 size={14} />
+                              </button>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     ))}
                   </div>
@@ -966,36 +1069,11 @@ export default function TeacherPage({ user, onLogout }) {
                     No hay clases o registros aún para este curso.
                   </p>
                 ) : (
-                  <div
-                    style={{
-                      overflowX: "auto",
-                      marginTop: "1rem",
-                      border: "1px solid var(--gray-200)",
-                      borderRadius: "6px",
-                    }}
-                  >
-                    <table
-                      style={{
-                        width: "100%",
-                        borderCollapse: "collapse",
-                        fontSize: "0.82rem",
-                        textAlign: "center",
-                      }}
-                    >
+                  <div className="table-responsive" style={{ marginTop: "1rem" }}>
+                    <table className="table-premium">
                       <thead>
-                        <tr style={{ background: "var(--gray-50)" }}>
-                          <th
-                            style={{
-                              padding: "10px 12px",
-                              borderBottom: "2px solid var(--gray-200)",
-                              textAlign: "left",
-                              minWidth: "180px",
-                              position: "sticky",
-                              left: 0,
-                              background: "var(--gray-50)",
-                              zIndex: 2,
-                            }}
-                          >
+                        <tr>
+                          <th className="sticky-column" style={{ textAlign: "left" }}>
                             Estudiante
                           </th>
                           {clasesColumns.map((c) => (
@@ -1022,8 +1100,8 @@ export default function TeacherPage({ user, onLogout }) {
                             style={{
                               padding: "10px 8px",
                               borderBottom: "2px solid var(--gray-200)",
-                              background: "#eff6ff",
-                              color: "#2563eb",
+                              background: "var(--primary-bg)",
+                              color: "var(--primary-dark)",
                               position: "sticky",
                               right: 0,
                               zIndex: 2,
@@ -1051,21 +1129,10 @@ export default function TeacherPage({ user, onLogout }) {
                             <tr
                               key={est.id}
                               style={{
-                                borderBottom: "1px solid var(--gray-100)",
                                 background: i % 2 === 0 ? "#fff" : "#fafafa",
                               }}
                             >
-                              <td
-                                style={{
-                                  padding: "6px 10px",
-                                  textAlign: "left",
-                                  position: "sticky",
-                                  left: 0,
-                                  background: i % 2 === 0 ? "#fff" : "#fafafa",
-                                  zIndex: 1,
-                                  borderRight: "1px solid var(--gray-100)",
-                                }}
-                              >
+                              <td className="sticky-column">
                                 <div
                                   style={{
                                     display: "flex",
@@ -1132,12 +1199,13 @@ export default function TeacherPage({ user, onLogout }) {
                                             createAsistenciaManual(
                                               est.id,
                                               c.id,
-                                              e.target.value,
+                                                  e.target.value,
                                             );
                                         }}
+                                        className={`badge-status ${status.toLowerCase()}`}
                                         style={{
                                           width: "100%",
-                                          height: "22px",
+                                          height: "28px",
                                           appearance: "none",
                                           border: "none",
                                           background: "transparent",
@@ -1145,8 +1213,8 @@ export default function TeacherPage({ user, onLogout }) {
                                           cursor: "pointer",
                                           outline: "none",
                                           fontWeight: "700",
-                                          fontSize: "0.80rem",
-                                          color: textColor,
+                                          fontSize: "0.75rem",
+                                          color: "inherit",
                                         }}
                                       >
                                         <option
@@ -1176,15 +1244,12 @@ export default function TeacherPage({ user, onLogout }) {
                               })}
                               <td
                                 style={{
-                                  padding: "6px",
                                   fontWeight: "bold",
                                   borderLeft: "2px solid var(--gray-200)",
-                                  background: "#eff6ff",
-                                  position: "sticky",
-                                  right: 0,
-                                  zIndex: 1,
-                                  color: "var(--blue-700)",
+                                  background: "var(--primary-bg)",
+                                  color: "var(--primary-dark)",
                                   fontSize: "0.9rem",
+                                  textAlign: "center"
                                 }}
                               >
                                 {points}

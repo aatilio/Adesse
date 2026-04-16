@@ -50,7 +50,7 @@ export default function AttendanceTable({ sesionId, asistencias, setAsistencias 
                 <span className="attendance-item-code">{a.codigo}</span>
                 <span className="attendance-item-time">{fmt(a.fecha_hora)}</span>
               </div>
-              <span className={`badge ${BADGE[a.estado] || ''}`}>{a.estado}</span>
+              <span className={`badge-status ${a.estado.toLowerCase()}`}>{a.estado}</span>
             </div>
           ))}
         </div>

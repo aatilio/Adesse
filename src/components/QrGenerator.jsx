@@ -66,7 +66,6 @@ export default function QrGenerator({ sesion }) {
             alignItems: 'center',
             justifyContent: 'center',
             gap: '0.75rem',
-            flexWrap: 'wrap',
             background: 'var(--primary-bg)',
             color: 'var(--primary-dark)',
             border: '2px dashed var(--primary-light)',
@@ -76,16 +75,19 @@ export default function QrGenerator({ sesion }) {
             opacity: token ? 1 : 0.6,
             font: 'inherit',
             transition: 'filter 0.15s ease, transform 0.1s ease, box-shadow 0.15s ease',
+            overflow: 'hidden',
           }}
         >
           <Copy size={22} strokeWidth={2.2} aria-hidden style={{ flexShrink: 0 }} />
           <span
             style={{
-              fontSize: 'clamp(1rem, 3vw, 2rem)',
+              fontSize: 'clamp(1rem, 2.5vw, 1.8rem)',
               fontWeight: 900,
-              letterSpacing: '0.35em',
+              letterSpacing: '0.25em',
               fontFamily: 'monospace',
-              wordBreak: 'break-all',
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
               textAlign: 'center',
               userSelect: 'all',
             }}
