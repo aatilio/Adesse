@@ -1,4 +1,4 @@
-// API ADESSE — servidor Node (Docker / local). La misma lógica que /api/index.js (Vercel).
+// API ADESE — servidor Node (Docker / local). La misma lógica que /api/index.js (Vercel).
 
 import express from 'express';
 import cors from 'cors';
@@ -428,7 +428,7 @@ app.get('/api/cursos/:id/historial', async (req, res) => {
 
 if (process.env.NODE_ENV !== 'production' || process.env.DOCKER) {
   app.listen(PORT, () => {
-    console.log(`API ADESSE en http://localhost:${PORT}`);
+    console.log(`API ADESE en http://localhost:${PORT}`);
   });
 }
 

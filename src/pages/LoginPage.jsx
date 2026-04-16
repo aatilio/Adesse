@@ -39,7 +39,7 @@ export default function LoginPage({ onLogin }) {
             <GraduationCap size={32} strokeWidth={2.5} />
           </div>
           <div className="login-logo-title" style={{ margin: "0.5rem 0 0" }}>
-            ADESSE
+            ADESE
           </div>
         </div>
 
@@ -115,7 +115,7 @@ export default function LoginPage({ onLogin }) {
           <div>
             &copy; {new Date().getFullYear()}{" "}
             <a href="./" style={{ color: "var(--gray-600)", textDecoration: "none", fontWeight: "700" }}>
-              Adesse
+              Adese
             </a>
             {" • "} Todos los derechos reservados
           </div>

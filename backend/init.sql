@@ -1,5 +1,5 @@
 -- ============================================================
--- ADESSE – Asistencia Digital Estratégica para el Sector Educativo
+-- ADESE – Asistencia Digital Estratégica para el Sector Educativo
 -- Esquema de Base de Datos v2.0 (Multi-Curso)
 -- ============================================================
 -- EXTENSIONES
