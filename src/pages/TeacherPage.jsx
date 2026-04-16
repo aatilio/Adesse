@@ -261,10 +261,10 @@ export default function TeacherPage({ user, onLogout }) {
     if (!sesion) return;
     if (!confirm("¿Cerrar la sesión actual?")) return;
     try {
-      await api.cerrarSesion(sesion.id);
+      await api.terminarSesion(sesion.id);
       setSesion(null);
       setAsistencias([]);
-      toast.info("Sesión cerrada");
+      toast.info("Sesión terminada y guardada.");
     } catch (err) {
       toast.error(err.message);
     }

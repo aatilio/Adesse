@@ -125,6 +125,16 @@ app.delete('/api/sesiones/:id', async (req, res) => {
   }
 });
 
+// PUT /api/sesiones/:id/terminar (Solo desactiva, no borra)
+app.put('/api/sesiones/:id/terminar', async (req, res) => {
+  try {
+    await pool.query('UPDATE sesiones_clase SET activa = false WHERE id = $1', [req.params.id]);
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // PUT /api/sesiones/:id/token
 app.put('/api/sesiones/:id/token', async (req, res) => {
   const { id } = req.params;
