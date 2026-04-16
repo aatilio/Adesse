@@ -322,19 +322,19 @@ export default function StudentPage({ user, onLogout }) {
                             </div>
                           ) : (
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                              <button className="btn btn-primary" onClick={startScanner} disabled={loading || !estado} style={{ width: '100%' }}>
+                                <QrCode size={16} style={{ marginRight: '6px' }} /> Escanear QR con Cámara
+                              </button>
+
+                              <div style={{ textAlign: 'center', fontSize: '0.7rem', color: 'var(--gray-400)', margin: '0.25rem 0' }}>— O USA EL CÓDIGO MANUAL —</div>
+
                               <input 
                                 placeholder="CÓDIGO (8 DIGITOS)" className="form-input" 
                                 value={inputCode} onChange={e => setInputCode(e.target.value.toUpperCase())}
                                 style={{ textAlign: 'center', letterSpacing: '2px', fontWeight: 'bold' }} maxLength={8}
                               />
-                              <button className="btn btn-primary" onClick={() => handleQrScan(inputCode)} disabled={loading || !estado || inputCode.length !== 8}>
+                              <button className="btn btn-ghost btn-sm" onClick={() => handleQrScan(inputCode)} disabled={loading || !estado || inputCode.length !== 8} style={{ width: '100%', border: '1px solid var(--gray-200)' }}>
                                 {loading ? <div className="spinner" /> : 'Confirmar Código Manual'}
-                              </button>
-                              
-                              <div style={{ textAlign: 'center', fontSize: '0.7rem', color: 'var(--gray-400)', margin: '0.25rem 0' }}>— O —</div>
-
-                              <button className="btn btn-ghost btn-sm" onClick={startScanner} disabled={loading || !estado} style={{ width: '100%', border: '1px solid var(--gray-200)' }}>
-                                <QrCode size={16} style={{ marginRight: '6px' }} /> Escanear QR con Cámara
                               </button>
                             </div>
                           )}

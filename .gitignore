@@ -12,12 +12,19 @@ coverage/
 # Docker volumes
 pgdata/
 
-# Environment variables
+# Environment variables & Database
 .env
 .env.local
 .env.development.local
 .env.test.local
 .env.production.local
+pgdata/
+postgres-data/
+*.db
+*.sqlite
+# Ignorar solo archivos SQL de datos, pero permitir scripts de inicialización
+data/*.sql
+dump.sql
 
 # IDE and OS
 .vscode/

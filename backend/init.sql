@@ -1,14 +1,6 @@
--- ============================================================
--- ADESE – Asistencia Digital Estratégica para el Sector Educativo
--- Esquema de Base de Datos v2.0 (Multi-Curso)
--- ============================================================
--- EXTENSIONES
--- ============================================================
 CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
--- ============================================================
--- TABLA: usuarios
--- ============================================================
+
 CREATE TABLE usuarios (
   id              SERIAL      PRIMARY KEY,
   codigo          TEXT        NOT NULL UNIQUE,
@@ -18,9 +10,7 @@ CREATE TABLE usuarios (
   created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
--- ============================================================
--- TABLA: cursos
--- ============================================================
+
 CREATE TABLE cursos (
   id          SERIAL      PRIMARY KEY,
   nombre      VARCHAR(100) NOT NULL,
@@ -28,9 +18,6 @@ CREATE TABLE cursos (
   created_at  TIMESTAMPTZ  NOT NULL DEFAULT NOW()
 );
 
--- ============================================================
--- TABLA: curso_estudiantes  (muchos a muchos)
--- ============================================================
 CREATE TABLE curso_estudiantes (
   id             SERIAL PRIMARY KEY,
   curso_id       INT NOT NULL REFERENCES cursos(id) ON DELETE CASCADE,
@@ -38,9 +25,7 @@ CREATE TABLE curso_estudiantes (
   UNIQUE(curso_id, estudiante_id)
 );
 
--- ============================================================
--- TABLA: sesiones_clase
--- ============================================================
+
 CREATE TABLE sesiones_clase (
   id                SERIAL      PRIMARY KEY,
   nombre_clase      TEXT        NOT NULL,
@@ -56,9 +41,7 @@ CREATE TABLE sesiones_clase (
   created_at        TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
--- ============================================================
--- TABLA: asistencias
--- ============================================================
+
 CREATE TABLE asistencias (
   id             SERIAL      PRIMARY KEY,
   estudiante_id  INT         NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
@@ -68,9 +51,7 @@ CREATE TABLE asistencias (
   UNIQUE(estudiante_id, sesion_id)
 );
 
--- ============================================================
--- TABLA: configuracion_horario
--- ============================================================
+
 CREATE TABLE configuracion_horario (
   id               INT         PRIMARY KEY DEFAULT 1,
   limite_puntual   VARCHAR(5)  NOT NULL DEFAULT '06:59',
@@ -83,18 +64,20 @@ INSERT INTO configuracion_horario (id, limite_puntual, limite_presente, limite_t
 VALUES (1, '06:59', '07:20', '08:20', true)
 ON CONFLICT (id) DO NOTHING;
 
--- ============================================================
--- ÍNDICES
--- ============================================================
+
 CREATE INDEX idx_asistencias_sesion     ON asistencias(sesion_id);
 CREATE INDEX idx_asistencias_estudiante ON asistencias(estudiante_id);
 CREATE INDEX idx_sesiones_activa        ON sesiones_clase(activa);
 CREATE INDEX idx_sesiones_curso         ON sesiones_clase(curso_id);
 CREATE INDEX idx_curso_est_curso        ON curso_estudiantes(curso_id);
 
--- ============================================================
--- DATOS INICIALES: Usuarios (rol por defecto 2 = estudiante)
--- ============================================================
+
+-- 1 = administrador (profesor)
+INSERT INTO usuarios (codigo, nombre_completo, rol) VALUES
+  ('...', 'Administrador', 1)
+ON CONFLICT (codigo) DO UPDATE SET nombre_completo = EXCLUDED.nombre_completo, rol = EXCLUDED.rol;
+
+
 INSERT INTO usuarios (codigo, nombre_completo) VALUES
   ('20241417', 'Anconeira Bejar Emanuel Alejandro'),
   ('20221252', 'Anquise Colque Carmen Rosa'),
@@ -152,21 +135,14 @@ INSERT INTO usuarios (codigo, nombre_completo) VALUES
   ('20241397', 'Yauri Moran Gabriel Alexander')
 ON CONFLICT (codigo) DO NOTHING;
 
--- 1 = administrador (profesor)
-INSERT INTO usuarios (codigo, nombre_completo, rol) VALUES
-  ('AR00T', 'Administrador', 1)
-ON CONFLICT (codigo) DO UPDATE SET nombre_completo = EXCLUDED.nombre_completo, rol = EXCLUDED.rol;
 
--- ============================================================
--- DATOS INICIALES: Curso "Econometría" con todos los alumnos
--- ============================================================
 INSERT INTO cursos (nombre, descripcion)
-VALUES ('Econometría', 'Curso principal — todos los alumnos inscritos');
+VALUES ('Econometría 1', 'Curso principal — todos los alumnos inscritos');
 
 -- Inscribir a todos los alumnos (excepto administrador) en Econometría
 INSERT INTO curso_estudiantes (curso_id, estudiante_id)
 SELECT
-  (SELECT id FROM cursos WHERE nombre = 'Econometría' LIMIT 1),
+  (SELECT id FROM cursos WHERE nombre = 'Econometría 1' LIMIT 1),
   u.id
 FROM usuarios u
 WHERE u.rol = 2;
@@ -179,7 +155,7 @@ VALUES (
   'Clase - 13/04',
   'token_historico_1304',
   false,
-  (SELECT id FROM cursos WHERE nombre = 'Econometría' LIMIT 1),
+  (SELECT id FROM cursos WHERE nombre = 'Econometría 1' LIMIT 1),
   '2026-04-13 07:00:00-05',
   '2026-04-13 07:00:00-05'
 );
@@ -188,7 +164,29 @@ INSERT INTO asistencias (estudiante_id, sesion_id, estado, fecha_hora)
 SELECT
   u.id,
   (SELECT id FROM sesiones_clase WHERE nombre_clase = 'Clase - 13/04' LIMIT 1),
-  'Presente',
+  'Puntual',
   '2026-04-13 07:15:00-05'
+FROM usuarios u
+WHERE u.rol = 2;
+
+-- ============================================================
+-- DATOS DE EJEMPLO: Sesión de hoy 15/04 con todos "Presente"
+-- ============================================================
+INSERT INTO sesiones_clase (nombre_clase, token_qr, activa, curso_id, fecha_programada, fecha_inicio)
+VALUES (
+  'Clase - 15/04',
+  'token_historico_1504',
+  false,
+  (SELECT id FROM cursos WHERE nombre = 'Econometría 1' LIMIT 1),
+  '2026-04-15 07:00:00-05',
+  '2026-04-15 07:00:00-05'
+);
+
+INSERT INTO asistencias (estudiante_id, sesion_id, estado, fecha_hora)
+SELECT
+  u.id,
+  (SELECT id FROM sesiones_clase WHERE nombre_clase = 'Clase - 15/04' LIMIT 1),
+  'Puntual',
+  '2026-04-15 07:10:00-05'
 FROM usuarios u
 WHERE u.rol = 2;
