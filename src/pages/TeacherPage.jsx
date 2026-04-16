@@ -180,7 +180,7 @@ export default function TeacherPage({ user, onLogout }) {
     try {
       await api.crearCursoSesion(cursoActivo.id, {
         nombre_clase: newClaseName.trim(),
-        fecha_programada: newClaseDate,
+        fecha_programada: new Date(newClaseDate).toISOString(),
         limite_puntual:  showLimits ? limPuntual  : undefined,
         limite_presente: showLimits ? limPresente : undefined,
         limite_tarde:    showLimits ? limTarde    : undefined
@@ -232,7 +232,7 @@ export default function TeacherPage({ user, onLogout }) {
     try {
       await api.updateSesion(editingSesion, {
         nombre_clase: editSesionData.nombre_clase.trim(),
-        fecha_programada: editSesionData.fecha_programada,
+        fecha_programada: new Date(editSesionData.fecha_programada).toISOString(),
         limite_puntual: editSesionData.limite_puntual,
         limite_presente: editSesionData.limite_presente,
         limite_tarde: editSesionData.limite_tarde
@@ -1019,63 +1019,68 @@ export default function TeacherPage({ user, onLogout }) {
                             </div>
                           </form>
                         ) : (
-                          <div
-                            style={{
-                              display: "flex",
-                              alignItems: "center",
-                              justifyContent: "space-between",
-                              gap: "1rem",
-                              padding: "0.75rem 1rem",
-                              background: s.activa ? "#ecfdf5" : "#f9fafb",
-                              borderRadius: "8px",
-                              border: `1px solid ${s.activa ? "#86efac" : "#e5e7eb"}`,
-                              marginBottom: "0.5rem"
-                            }}
-                          >
-                            <div
-                              style={{ display: "flex", flexDirection: "column" }}
-                            >
-                              <strong style={{ fontSize: "0.9rem" }}>
-                                {s.nombre_clase}
-                              </strong>
-                              <span
-                                style={{
-                                  fontSize: "0.75rem",
-                                  color: "var(--gray-500)",
-                                }}
-                              >
-                                {s.fecha_programada
-                                  ? fmtFecha(s.fecha_programada)
-                                  : fmtFecha(s.fecha_inicio)}
-                                {s.total_asistencias > 0 &&
-                                  ` • ${s.total_asistencias} registros`}
-                              </span>
-                            </div>
                             <div
                               style={{
                                 display: "flex",
-                                gap: "0.5rem",
                                 alignItems: "center",
+                                justifyContent: "space-between",
+                                gap: "1rem",
+                                padding: "0.75rem 1rem",
+                                background: s.activa ? "var(--success-bg)" : "var(--gray-50)",
+                                borderRadius: "12px",
+                                border: `1px solid ${s.activa ? "var(--success)" : "var(--gray-200)"}`,
+                                marginBottom: "0.75rem",
+                                transition: "all 0.2s ease"
                               }}
                             >
-                              {s.activa ? (
+                              <div
+                                style={{ display: "flex", flexDirection: "column" }}
+                              >
+                                <strong style={{ fontSize: "0.95rem", color: "var(--gray-900)" }}>
+                                  {s.nombre_clase}
+                                </strong>
                                 <span
-                                  className="badge"
                                   style={{
-                                    background: "#dcfce7",
-                                    color: "#16a34a",
+                                    fontSize: "0.75rem",
+                                    color: "var(--gray-500)",
+                                    fontWeight: "500"
                                   }}
                                 >
-                                  EN VIVO
+                                  {s.fecha_programada
+                                    ? fmtFecha(s.fecha_programada)
+                                    : fmtFecha(s.fecha_inicio)}
+                                  {s.total_asistencias > 0 &&
+                                    ` • ${s.total_asistencias} asistencias`}
                                 </span>
-                              ) : (
-                                <button
-                                  className="btn btn-sm btn-primary"
-                                  onClick={() => activarSesion(s.id)}
-                                >
-                                  <Play size={12} /> Iniciar
-                                </button>
-                              )}
+                              </div>
+                              <div
+                                style={{
+                                  display: "flex",
+                                  gap: "0.5rem",
+                                  alignItems: "center",
+                                }}
+                              >
+                                {s.activa ? (
+                                  <span
+                                    className="badge"
+                                    style={{
+                                      background: "var(--success)",
+                                      color: "white",
+                                      fontWeight: "700",
+                                      letterSpacing: "0.02em"
+                                    }}
+                                  >
+                                    EN VIVO
+                                  </span>
+                                ) : (
+                                  <button
+                                    className="btn btn-sm btn-primary"
+                                    onClick={() => activarSesion(s.id)}
+                                    style={{ borderRadius: "8px" }}
+                                  >
+                                    <Play size={12} fill="currentColor" /> Iniciar
+                                  </button>
+                                )}
                               <button
                                 className="btn btn-sm btn-ghost"
                                 onClick={() => openEditForm(s)}
