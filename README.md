@@ -6,11 +6,7 @@ Una aplicación web moderna diseñada para registrar, controlar y gestionar de m
 
 ## 🚀 Características Principales
 
-* **Control de Horario Dinámico:** El sistema bloquea inteligentemente la selección de asistencia garantizando reglas estrictas:
-  * *(6:30 AM a 6:59 AM)* -> **Puntual**
-  * *(7:00 AM a 7:20 AM)* -> **Presente**
-  * *(7:21 AM a 8:20 AM)* -> **Tarde**
-  * Fuera de estos horarios -> Registro de asistencia deshabilitado.
+* **Control de Horario Flexible:** Los límites de tiempo son 100% configurables por el docente para cada sesión (Puntual, Presente, Tarde). El sistema bloquea inteligentemente el registro fuera de los horarios establecidos, garantizando integridad en los reportes.
 * **Escaneo de Código QR Activo:** En lugar de ser un simple pase de lista fijo, la pantalla del profesor genera códigos interactivos (JWT) renovables cada 15 segundos, impidiendo que el alumno haga fraude con fotos de códigos anteriores.
 * **Panel Docente en Tiempo Real:** 
   * Ver quién llegó, con qué estado de asistencia de manera automática y a qué hora.
