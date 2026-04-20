@@ -53,35 +53,36 @@ const generateQrToken = () => {
 // Alias por compatibilidad si se usa en otros sitios
 const generateRandomCode = generateQrToken;
 
-// Rellena automáticamente las inasistencias de una sesión si ya pasó la hora límite
-const autoFillAbsences = async (pool, sesionId) => {
+// Rellena automáticamente las inasistencias de una sesión
+// force = true ignora los límites de tiempo (usado al cerrar sesión manualmente)
+const autoFillAbsences = async (pool, sesionId, force = false) => {
   try {
-    // 1. Obtener datos de la sesión y ver si ya fue procesada
+    // 1. Obtener datos de la sesión
     const sesRes = await pool.query('SELECT curso_id, limite_tarde, activa, faltas_procesadas FROM sesiones_clase WHERE id = $1', [sesionId]);
     if (sesRes.rows.length === 0) return;
     const s = sesRes.rows[0];
 
-    // Si ya se procesó, no hacer nada más (ahorro de recursos)
-    if (s.faltas_procesadas) return;
+    // Si ya se procesó y no es un forzado, no hacer nada
+    if (s.faltas_procesadas && !force) return;
 
     // 2. ¿Debe llenarse ahora? 
-    // Se llena si:
-    // A) La sesión ya no está activa (terminada manualmente).
-    // B) Es el día de la clase (o pasado) Y ya superamos la hora límite de tarde.
+    let shouldFill = force;
     
-    // Obtenemos si ya pasó la hora y si ya es el día (usando SQL para precisión de zona horaria)
-    const checkQuery = `
-      SELECT 
-        ($1 = false) as sesion_terminada,
-        (CURRENT_DATE > fecha_programada::date) as dia_pasado,
-        (CURRENT_DATE = fecha_programada::date AND TO_CHAR(NOW(), 'HH24:MI') > limite_tarde) as hoy_tarde_pasada
-      FROM sesiones_clase 
-      WHERE id = $2
-    `;
-    const checkRes = await pool.query(checkQuery, [s.activa, sesionId]);
-    const check = checkRes.rows[0];
-
-    const shouldFill = check.sesion_terminada || check.dia_pasado || check.hoy_tarde_pasada;
+    if (!shouldFill) {
+      // Verificamos fecha y hora en el servidor (Postgres)
+      const checkQuery = `
+        SELECT 
+          (fecha_programada::date < CURRENT_DATE) as dia_pasado,
+          (fecha_programada::date = CURRENT_DATE AND TO_CHAR(NOW(), 'HH24:MI') > limite_tarde) as hoy_tarde_pasada
+        FROM sesiones_clase 
+        WHERE id = $1
+      `;
+      const checkRes = await pool.query(checkQuery, [sesionId]);
+      if (checkRes.rows.length > 0) {
+        const check = checkRes.rows[0];
+        shouldFill = check.dia_pasado || check.hoy_tarde_pasada;
+      }
+    }
 
     if (shouldFill) {
       // 3. Insertar inasistencias para alumnos faltantes
@@ -538,8 +539,8 @@ app.put('/api/sesiones/:id/terminar', async (req, res) => {
     // 1. Desactivar la sesión
     await pool.query('UPDATE sesiones_clase SET activa = false WHERE id = $1', [sesionId]);
     
-    // 2. Ejecutar auto-llenado de faltas inmediatamente
-    await autoFillAbsences(pool, sesionId);
+    // 2. Ejecutar auto-llenado de faltas FORZADO (ignorando el reloj)
+    await autoFillAbsences(pool, sesionId, true);
     
     res.json({ ok: true, message: 'Sesión terminada y inasistencias registradas' });
   } catch (err) { res.status(500).json({ error: err.message }); }
