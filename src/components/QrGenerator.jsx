@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { useCallback, useState, useEffect } from 'react';
 import { Copy } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { toast } from './Toast';
