@@ -69,18 +69,16 @@ const autoFillAbsences = async (pool, sesionId, force = false) => {
     let shouldFill = force;
     
     if (!shouldFill) {
-      // Verificamos fecha y hora en el servidor (Postgres)
-      const checkQuery = `
-        SELECT 
-          (fecha_programada::date < CURRENT_DATE) as dia_pasado,
-          (fecha_programada::date = CURRENT_DATE AND TO_CHAR(NOW(), 'HH24:MI') > limite_tarde) as hoy_tarde_pasada
-        FROM sesiones_clase 
-        WHERE id = $1
-      `;
-      const checkRes = await pool.query(checkQuery, [sesionId]);
-      if (checkRes.rows.length > 0) {
-        const check = checkRes.rows[0];
-        shouldFill = check.dia_pasado || check.hoy_tarde_pasada;
+      // SOLO llenamos automáticamente si la sesión está ACTIVA y ya pasó la hora
+      // Si la sesión está inactiva (progamada pero no iniciada), NO llenamos nada.
+      if (s.activa) {
+        const checkRes = await pool.query(`
+          SELECT (CURRENT_DATE = fecha_programada::date AND TO_CHAR(NOW(), 'HH24:MI') > limite_tarde) as hoy_tarde_pasada
+          FROM sesiones_clase WHERE id = $1
+        `, [sesionId]);
+        if (checkRes.rows.length > 0 && checkRes.rows[0].hoy_tarde_pasada) {
+          shouldFill = true;
+        }
       }
     }
 
