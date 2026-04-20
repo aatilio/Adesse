@@ -519,6 +519,18 @@ app.put('/api/sesiones/:id/activar', async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+// PUT /api/sesiones/:id/refrescar  (rotate QR token)
+app.put('/api/sesiones/:id/refrescar', async (req, res) => {
+  try {
+    const token = generateRandomCode();
+    const r = await pool.query(
+      'UPDATE sesiones_clase SET token_qr = $1 WHERE id = $2 RETURNING *',
+      [token, req.params.id]
+    );
+    res.json({ sesion: r.rows[0] });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 // PUT /api/sesiones/:id/terminar  (manually end a session)
 app.put('/api/sesiones/:id/terminar', async (req, res) => {
   try {

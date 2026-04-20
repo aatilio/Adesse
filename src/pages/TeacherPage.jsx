@@ -127,11 +127,14 @@ export default function TeacherPage({ user, onLogout }) {
   // ── Auto-refresh QR Token every 60s ─────────────────────
   useEffect(() => {
     let interval;
-    if (sesion && sesion.activa) {
+    if (sesion?.id && sesion?.activa) {
       interval = setInterval(async () => {
         try {
           const res = await api.refrescarToken(sesion.id);
-          if (res.sesion) setSesion(res.sesion);
+          // Actualización segura de la sesión
+          if (res?.sesion) {
+            setSesion(res.sesion);
+          }
         } catch (err) {
           console.error("Error al refrescar token:", err.message);
         }
@@ -777,7 +780,7 @@ export default function TeacherPage({ user, onLogout }) {
                         }}
                       >
                         <span className="live-dot" />{" "}
-                        <strong>{sesion.nombre_clase}</strong>
+                        <strong>{sesion?.nombre_clase || 'Cargando...'}</strong>
                       </div>
                       <button
                         type="button"
@@ -795,7 +798,7 @@ export default function TeacherPage({ user, onLogout }) {
                   </div>
                   <div className="card teacher-attendance-card">
                     <AttendanceTable
-                      sesionId={sesion.id}
+                      sesionId={sesion?.id}
                       asistencias={asistencias}
                       setAsistencias={setAsistencias}
                     />

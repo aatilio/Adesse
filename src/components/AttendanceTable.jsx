@@ -12,9 +12,9 @@ const BADGE = {
 const fmt = (iso) =>
   new Date(iso).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' });
 
-export default function AttendanceTable({ sesionId, asistencias, setAsistencias }) {
+export default function AttendanceTable({ sesionId, asistencias = [], setAsistencias }) {
   // Ref para rastrear la cantidad anterior de alumnos y evitar bucles
-  const prevCountRef = useRef(asistencias.length);
+  const prevCountRef = useRef(asistencias?.length || 0);
 
   // Función para generar un sonido de éxito (Ping)
   const playSuccessSound = useCallback(() => {
@@ -27,7 +27,7 @@ export default function AttendanceTable({ sesionId, asistencias, setAsistencias 
       gainNode.connect(audioCtx.destination);
 
       oscillator.type = 'sine';
-      oscillator.frequency.setValueAtTime(880, audioCtx.currentTime); // Nota La (A5)
+      oscillator.frequency.setValueAtTime(880, audioCtx.currentTime); 
       
       gainNode.gain.setValueAtTime(0, audioCtx.currentTime);
       gainNode.gain.linearRampToValueAtTime(0.2, audioCtx.currentTime + 0.05);
@@ -42,18 +42,24 @@ export default function AttendanceTable({ sesionId, asistencias, setAsistencias 
 
   // Efecto para disparar el sonido cuando aumenta la cuenta
   useEffect(() => {
-    if (asistencias.length > prevCountRef.current && prevCountRef.current > 0) {
+    const currentLen = asistencias?.length || 0;
+    if (currentLen > prevCountRef.current && prevCountRef.current > 0) {
       playSuccessSound();
     }
-    prevCountRef.current = asistencias.length;
-  }, [asistencias.length, playSuccessSound]);
+    prevCountRef.current = currentLen;
+  }, [asistencias?.length, playSuccessSound]);
 
   const fetchAsistencias = useCallback(async () => {
     if (!sesionId) return;
     try {
-      const { asistencias: rows } = await api.getAsistencias(sesionId);
-      setAsistencias(rows);
-    } catch { /* silent */ }
+      const res = await api.getAsistencias(sesionId);
+      // Blindaje: Si no hay datos, enviamos array vacío
+      setAsistencias(res?.asistencias || []);
+    } catch (err) {
+      console.error("Error cargando asistencias:", err);
+      // No actualizamos el estado o ponemos vacío para evitar el crash
+      setAsistencias([]);
+    }
   }, [sesionId, setAsistencias]);
 
   useEffect(() => {
