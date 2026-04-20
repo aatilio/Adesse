@@ -1,4 +1,4 @@
-import { useEffect, useCallback } from 'react';
+import { useEffect, useCallback, useRef } from 'react';
 import { Users } from 'lucide-react';
 import { api } from '../api/client';
 
@@ -13,8 +13,11 @@ const fmt = (iso) =>
   new Date(iso).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' });
 
 export default function AttendanceTable({ sesionId, asistencias, setAsistencias }) {
+  // Ref para rastrear la cantidad anterior de alumnos y evitar bucles
+  const prevCountRef = useRef(asistencias.length);
+
   // Función para generar un sonido de éxito (Ping)
-  const playSuccessSound = () => {
+  const playSuccessSound = useCallback(() => {
     try {
       const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
       const oscillator = audioCtx.createOscillator();
@@ -35,27 +38,29 @@ export default function AttendanceTable({ sesionId, asistencias, setAsistencias 
     } catch (e) {
       console.error("No se pudo reproducir el sonido:", e);
     }
-  };
+  }, []);
 
-  const fetch = useCallback(async () => {
+  // Efecto para disparar el sonido cuando aumenta la cuenta
+  useEffect(() => {
+    if (asistencias.length > prevCountRef.current && prevCountRef.current > 0) {
+      playSuccessSound();
+    }
+    prevCountRef.current = asistencias.length;
+  }, [asistencias.length, playSuccessSound]);
+
+  const fetchAsistencias = useCallback(async () => {
     if (!sesionId) return;
     try {
       const { asistencias: rows } = await api.getAsistencias(sesionId);
-      
-      // Si hay más asistencias que antes, ¡Suena el BEEP!
-      if (rows.length > asistencias.length && asistencias.length > 0) {
-        playSuccessSound();
-      }
-      
       setAsistencias(rows);
     } catch { /* silent */ }
-  }, [sesionId, asistencias.length, setAsistencias]);
+  }, [sesionId, setAsistencias]);
 
   useEffect(() => {
-    fetch();
-    const id = setInterval(fetch, 5000); // polling cada 5s
+    fetchAsistencias();
+    const id = setInterval(fetchAsistencias, 5000);
     return () => clearInterval(id);
-  }, [fetch]);
+  }, [fetchAsistencias]);
 
   return (
     <div>
