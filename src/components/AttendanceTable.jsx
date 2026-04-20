@@ -13,13 +13,43 @@ const fmt = (iso) =>
   new Date(iso).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' });
 
 export default function AttendanceTable({ sesionId, asistencias, setAsistencias }) {
+  // Función para generar un sonido de éxito (Ping)
+  const playSuccessSound = () => {
+    try {
+      const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      const oscillator = audioCtx.createOscillator();
+      const gainNode = audioCtx.createGain();
+
+      oscillator.connect(gainNode);
+      gainNode.connect(audioCtx.destination);
+
+      oscillator.type = 'sine';
+      oscillator.frequency.setValueAtTime(880, audioCtx.currentTime); // Nota La (A5)
+      
+      gainNode.gain.setValueAtTime(0, audioCtx.currentTime);
+      gainNode.gain.linearRampToValueAtTime(0.2, audioCtx.currentTime + 0.05);
+      gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.4);
+
+      oscillator.start(audioCtx.currentTime);
+      oscillator.stop(audioCtx.currentTime + 0.4);
+    } catch (e) {
+      console.error("No se pudo reproducir el sonido:", e);
+    }
+  };
+
   const fetch = useCallback(async () => {
     if (!sesionId) return;
     try {
       const { asistencias: rows } = await api.getAsistencias(sesionId);
+      
+      // Si hay más asistencias que antes, ¡Suena el BEEP!
+      if (rows.length > asistencias.length && asistencias.length > 0) {
+        playSuccessSound();
+      }
+      
       setAsistencias(rows);
     } catch { /* silent */ }
-  }, [sesionId]);
+  }, [sesionId, asistencias.length, setAsistencias]);
 
   useEffect(() => {
     fetch();

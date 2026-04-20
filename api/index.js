@@ -40,22 +40,18 @@ pool.query('SELECT NOW()', (err) => {
 });
 
 // ── Helpers ───────────────────────────────────────────────────
-const generateRandomCode = () => {
+// Generador de códigos alfanuméricos de 16 caracteres
+const generateQrToken = () => {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
   let result = '';
-  for (let i = 0; i < 8; i++) result += chars.charAt(Math.floor(Math.random() * chars.length));
-  return result;
-};
-
-const generateQrToken = (sesionId) => {
-  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-  let result = '';
-  // Generar un código de 16 dígitos para el QR
   for (let i = 0; i < 16; i++) {
     result += chars.charAt(Math.floor(Math.random() * chars.length));
   }
   return result;
 };
+
+// Mantenemos este alias por compatibilidad si se usa en otros sitios
+const generateRandomCode = generateQrToken;
 
 // ── ROUTES ────────────────────────────────────────────────────
 

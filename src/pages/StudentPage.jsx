@@ -329,11 +329,11 @@ export default function StudentPage({ user, onLogout }) {
                               <div style={{ textAlign: 'center', fontSize: '0.7rem', color: 'var(--gray-400)', margin: '0.25rem 0' }}>— O USA EL CÓDIGO MANUAL —</div>
 
                               <input 
-                                placeholder="CÓDIGO (8 DIGITOS)" className="form-input" 
+                                placeholder="CÓDIGO (16 DIGITOS)" className="form-input" 
                                 value={inputCode} onChange={e => setInputCode(e.target.value.toUpperCase())}
-                                style={{ textAlign: 'center', letterSpacing: '2px', fontWeight: 'bold' }} maxLength={8}
+                                style={{ textAlign: 'center', letterSpacing: '1px', fontWeight: 'bold' }} maxLength={16}
                               />
-                              <button className="btn btn-ghost btn-sm" onClick={() => handleQrScan(inputCode)} disabled={loading || !estado || inputCode.length !== 8} style={{ width: '100%', border: '1px solid var(--gray-200)' }}>
+                              <button className="btn btn-ghost btn-sm" onClick={() => handleQrScan(inputCode)} disabled={loading || !estado || inputCode.length !== 16} style={{ width: '100%', border: '1px solid var(--gray-200)' }}>
                                 {loading ? <div className="spinner" /> : 'Confirmar Código Manual'}
                               </button>
                             </div>
