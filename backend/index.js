@@ -43,12 +43,15 @@ const generateRandomCode = () => {
   return result;
 };
 
-const generateQrToken = (sesionId) =>
-  jwt.sign(
-    { sesionId, iat: Math.floor(Date.now() / 1000) },
-    QR_SECRET,
-    { expiresIn: QR_EXPIRY_SECONDS }
-  );
+const generateQrToken = (sesionId) => {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+  let result = '';
+  // Generar un código de 16 dígitos para el QR
+  for (let i = 0; i < 16; i++) {
+    result += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return result;
+};
 
 // ── ROUTES ────────────────────────────────────────────────────
 
@@ -153,14 +156,14 @@ app.post('/api/asistencias', async (req, res) => {
       return res.status(403).json({ error: 'Solo los estudiantes pueden registrar asistencia' });
     }
 
-    // Look for session with matching token that is either 'activa' OR scheduled for TODAY
+    // Buscamos sesión activa con ese token
     const sesion = await pool.query(`
       SELECT * FROM sesiones_clase 
       WHERE token_qr = $1 
       AND (activa = true OR fecha_programada::date = CURRENT_DATE)
     `, [token_qr]);
 
-    if (sesion.rows.length === 0) return res.status(400).json({ error: 'Código inválido o clase no disponible hoy' });
+    if (sesion.rows.length === 0) return res.status(400).json({ error: 'Código inválido o clase no disponible' });
 
     const sesionId = sesion.rows[0].id;
 
