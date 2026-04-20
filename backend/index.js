@@ -52,31 +52,54 @@ const generateRandomCode = generateQrToken;
 // Rellena automáticamente las inasistencias de una sesión si ya pasó la hora límite
 const autoFillAbsences = async (pool, sesionId) => {
   try {
-    // 1. Obtener datos de la sesión
-    const sesRes = await pool.query('SELECT curso_id, limite_tarde, activa FROM sesiones_clase WHERE id = $1', [sesionId]);
+    // 1. Obtener datos de la sesión y ver si ya fue procesada
+    const sesRes = await pool.query('SELECT curso_id, limite_tarde, activa, faltas_procesadas FROM sesiones_clase WHERE id = $1', [sesionId]);
     if (sesRes.rows.length === 0) return;
     const s = sesRes.rows[0];
 
-    // 2. ¿Debe llenarse? 
-    const queryFill = `
-      INSERT INTO asistencias (estudiante_id, sesion_id, estado, fecha_hora)
-      SELECT ce.estudiante_id, $1, 'Falto', NOW()
-      FROM curso_estudiantes ce
-      WHERE ce.curso_id = $2
-        AND NOT EXISTS (
-          SELECT 1 FROM asistencias a 
-          WHERE a.estudiante_id = ce.estudiante_id AND a.sesion_id = $1
-        )
-        AND (
-          $3 = false -- Sesión terminada manualmente
-          OR TO_CHAR(NOW(), 'HH24:MI') > (SELECT limite_tarde FROM sesiones_clase WHERE id = $1)
-        )
-    `;
-    await pool.query(queryFill, [sesionId, s.curso_id, s.activa]);
+    // Si ya se procesó, no hacer nada más (ahorro de recursos)
+    if (s.faltas_procesadas) return;
+
+    // 2. ¿Debe llenarse ahora? 
+    // Se llena si la sesión se cerró, o si ya pasó la hora límite
+    const shouldFill = !s.activa || (await pool.query("SELECT TO_CHAR(NOW(), 'HH24:MI') > $1 as past", [s.limite_tarde])).rows[0].past;
+
+    if (shouldFill) {
+      // 3. Insertar inasistencias para alumnos faltantes
+      await pool.query(`
+        INSERT INTO asistencias (estudiante_id, sesion_id, estado, fecha_hora)
+        SELECT ce.estudiante_id, $1, 'Falto', NOW()
+        FROM curso_estudiantes ce
+        WHERE ce.curso_id = $2
+          AND NOT EXISTS (
+            SELECT 1 FROM asistencias a 
+            WHERE a.estudiante_id = ce.estudiante_id AND a.sesion_id = $1
+          )
+      `, [sesionId, s.curso_id]);
+
+      // 4. Marcar como procesada PARA SIEMPRE para esta sesión
+      await pool.query('UPDATE sesiones_clase SET faltas_procesadas = true WHERE id = $1', [sesionId]);
+      console.log(`[Auto-Falto] Sesión ${sesionId} procesada exitosamente.`);
+    }
   } catch (err) {
     console.error("Error en autoFillAbsences:", err.message);
   }
 };
+
+// ── Migración Automática ──────────────────────────────────────
+const runMigrations = async (pool) => {
+  try {
+    await pool.query(`
+      ALTER TABLE sesiones_clase 
+      ADD COLUMN IF NOT EXISTS faltas_procesadas BOOLEAN DEFAULT FALSE;
+    `);
+  } catch (err) {
+    console.error("Error en migración:", err.message);
+  }
+};
+
+// Ejecutar migración al iniciar
+runMigrations(pool);
 
 // ── ROUTES ────────────────────────────────────────────────────
 
