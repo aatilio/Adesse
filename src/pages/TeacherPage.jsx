@@ -479,7 +479,7 @@ export default function TeacherPage({ user, onLogout }) {
           <ClipboardList size={20} />
           <div>
             <div style={{ padding: 0, display: "flex", alignItems: "center" }}>
-              <h1>Panel Docente</h1>
+            <h1>ADESE — Panel Docente</h1>
             </div>
             <div className="subtitle">{user.nombre_completo}</div>
           </div>

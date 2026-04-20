@@ -171,14 +171,11 @@ export default function StudentPage({ user, onLogout }) {
           <ClipboardList size={20} />
           <div>
             <div className="page-header" style={{ padding: 0 }}>
-              <h1>Mi Asistencia</h1>
+              <h1>ADESE — Mi Asistencia</h1>
             </div>
             <div className="subtitle">{user.nombre_completo}</div>
           </div>
         </div>
-        <button onClick={onLogout} className="btn btn-sm btn-ghost" style={{ background: 'rgba(255,255,255,0.15)', color: 'white', border: 'none' }}>
-          <LogOut size={14} /> Salir
-        </button>
       </div>
 
       <div className="page-body" style={{ width: '100%', padding: '1rem' }}>

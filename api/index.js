@@ -50,8 +50,39 @@ const generateQrToken = () => {
   return result;
 };
 
-// Mantenemos este alias por compatibilidad si se usa en otros sitios
+// Alias por compatibilidad si se usa en otros sitios
 const generateRandomCode = generateQrToken;
+
+// Rellena automáticamente las inasistencias de una sesión si ya pasó la hora límite
+const autoFillAbsences = async (pool, sesionId) => {
+  try {
+    // 1. Obtener datos de la sesión
+    const sesRes = await pool.query('SELECT curso_id, limite_tarde, activa FROM sesiones_clase WHERE id = $1', [sesionId]);
+    if (sesRes.rows.length === 0) return;
+    const s = sesRes.rows[0];
+
+    // 2. ¿Debe llenarse? 
+    // Si la sesión ya no está activa, o si estamos en la hora límite (en el servidor)
+    // Usamos TO_CHAR(NOW(), 'HH24:MI') para comparar con el formato VARCHAR(5) de la DB
+    const queryFill = `
+      INSERT INTO asistencias (estudiante_id, sesion_id, estado, fecha_hora)
+      SELECT ce.estudiante_id, $1, 'Falto', NOW()
+      FROM curso_estudiantes ce
+      WHERE ce.curso_id = $2
+        AND NOT EXISTS (
+          SELECT 1 FROM asistencias a 
+          WHERE a.estudiante_id = ce.estudiante_id AND a.sesion_id = $1
+        )
+        AND (
+          $3 = false -- Sesión terminada manualmente
+          OR TO_CHAR(NOW(), 'HH24:MI') > (SELECT limite_tarde FROM sesiones_clase WHERE id = $1)
+        )
+    `;
+    await pool.query(queryFill, [sesionId, s.curso_id, s.activa]);
+  } catch (err) {
+    console.error("Error en autoFillAbsences:", err.message);
+  }
+};
 
 // ── ROUTES ────────────────────────────────────────────────────
 
@@ -284,11 +315,15 @@ app.get('/api/asistencias/historial', async (req, res) => {
 
 // GET /api/asistencias/:sesion_id
 app.get('/api/asistencias/:sesion_id', async (req, res) => {
+  const { sesion_id } = req.params;
   try {
+    // Intentar auto-llenar faltas antes de devolver la lista
+    await autoFillAbsences(pool, sesion_id);
+
     const r = await pool.query(
       `SELECT a.id, a.estado, a.fecha_hora, u.nombre_completo, u.codigo
        FROM asistencias a JOIN usuarios u ON u.id = a.estudiante_id
-       WHERE a.sesion_id = $1 ORDER BY a.fecha_hora ASC`, [req.params.sesion_id]
+       WHERE a.sesion_id = $1 ORDER BY a.fecha_hora ASC`, [sesion_id]
     );
     res.json({ asistencias: r.rows });
   } catch (err) {
@@ -447,9 +482,32 @@ app.put('/api/sesiones/:id/activar', async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+// PUT /api/sesiones/:id/terminar  (manually end a session)
+app.put('/api/sesiones/:id/terminar', async (req, res) => {
+  try {
+    const sesionId = req.params.id;
+    // 1. Desactivar la sesión
+    await pool.query('UPDATE sesiones_clase SET activa = false WHERE id = $1', [sesionId]);
+    
+    // 2. Ejecutar auto-llenado de faltas inmediatamente
+    await autoFillAbsences(pool, sesionId);
+    
+    res.json({ ok: true, message: 'Sesión terminada y inasistencias registradas' });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 // GET /api/cursos/:id/historial  (attendance matrix filtered by course)
 app.get('/api/cursos/:id/historial', async (req, res) => {
   try {
+    const cursoId = req.params.id;
+
+    // Auto-llenar faltas para las sesiones de este curso que ya deberían haber terminado
+    // Esto asegura que la matriz esté completa al verla
+    const sesionesRes = await pool.query('SELECT id FROM sesiones_clase WHERE curso_id = $1', [cursoId]);
+    for (const s of sesionesRes.rows) {
+      await autoFillAbsences(pool, s.id);
+    }
+
     const r = await pool.query(`
       SELECT a.id, a.estado, a.fecha_hora, a.sesion_id, a.estudiante_id, 
              u.nombre_completo, u.codigo, s.nombre_clase
@@ -458,7 +516,7 @@ app.get('/api/cursos/:id/historial', async (req, res) => {
       JOIN sesiones_clase s ON s.id = a.sesion_id
       WHERE s.curso_id = $1
       ORDER BY a.fecha_hora DESC
-    `, [req.params.id]);
+    `, [cursoId]);
     res.json({ historial: r.rows });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });

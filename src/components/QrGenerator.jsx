@@ -26,7 +26,21 @@ async function copyToClipboard(text) {
 }
 
 export default function QrGenerator({ sesion }) {
-  const token = sesion.token_qr || '';
+  const token = sesion?.token_qr || '';
+  const [timeLeft, setTimeLeft] = useState(60);
+
+  // Reiniciar el contador local cada vez que cambia el token (que cambia cada 60s en el padre)
+  useEffect(() => {
+    setTimeLeft(60);
+  }, [token]);
+
+  // Ticker de 1 segundo para la barra visual
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setTimeLeft((prev) => (prev > 0 ? prev - 1 : 0));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
 
   const copyCode = useCallback(async () => {
     if (!token) return;
@@ -41,14 +55,35 @@ export default function QrGenerator({ sesion }) {
   return (
     <div className="qr-box" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem', padding: '1.5rem 2rem' }}>
       {token ? (
-        <QRCodeSVG
-          value={token}
-          size={240}
-          bgColor="#ffffff"
-          fgColor="#111827"
-          level="H"
-          style={{ borderRadius: '8px', border: '10px solid white', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}
-        />
+        <div style={{ position: 'relative' }}>
+          <QRCodeSVG
+            value={token}
+            size={240}
+            bgColor="#ffffff"
+            fgColor="#111827"
+            level="H"
+            style={{ borderRadius: '8px', border: '10px solid white', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}
+          />
+          {/* Barra de progreso discreta */}
+          <div style={{ 
+            position: 'absolute', 
+            bottom: '-5px', 
+            left: '10px', 
+            right: '10px', 
+            height: '3px', 
+            background: 'var(--gray-100)', 
+            borderRadius: '10px',
+            overflow: 'hidden'
+          }}>
+            <div style={{ 
+              height: '100%', 
+              background: 'var(--primary)', 
+              width: `${(timeLeft / 60) * 100}%`,
+              transition: 'width 1s linear',
+              opacity: 0.6
+            }} />
+          </div>
+        </div>
       ) : (
         <div style={{ width: 240, height: 240, background: 'var(--gray-100)', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <div className="spinner" style={{ borderTopColor: 'var(--gray-400)' }} />
