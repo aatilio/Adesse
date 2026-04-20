@@ -115,9 +115,9 @@ export default function LoginPage({ onLogin }) {
           <div>
             &copy; {new Date().getFullYear()}{" "}
             <a href="./" style={{ color: "var(--gray-600)", textDecoration: "none", fontWeight: "700" }}>
-              Adese
+              ADESE
             </a>
-            {" • "} Todos los derechos reservados
+            {" • "} `v1.5.0`
           </div>
           <div style={{ marginTop: "4px" }}>
             Desarrollado con ❤️ por{" "}

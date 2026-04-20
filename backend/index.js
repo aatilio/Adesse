@@ -9,7 +9,7 @@ const { Pool } = pkg;
 const app = express();
 const PORT = process.env.PORT || 3000;
 const QR_SECRET = process.env.QR_SECRET || 'sai-qr-super-secret-key-2024';
-const QR_EXPIRY_SECONDS = 15;
+const QR_EXPIRY_SECONDS = 60;
 
 /** Coincide con columna usuarios.rol (1 = admin/profesor, 2 = estudiante). */
 const ROL_ADMIN = 1;
@@ -78,18 +78,14 @@ app.post('/api/auth/login', async (req, res) => {
 // GET /api/sesiones/activa
 app.get('/api/sesiones/activa', async (req, res) => {
   try {
-    // 1. Check for manually activated session
-    let r = await pool.query(`SELECT * FROM sesiones_clase WHERE activa = true ORDER BY fecha_inicio DESC LIMIT 1`);
-    
-    // 2. If nothing manually active, look for a scheduled session for TODAY
-    if (r.rows.length === 0) {
-      r = await pool.query(`
-        SELECT * FROM sesiones_clase 
-        WHERE activa = false 
-        AND fecha_programada::date = CURRENT_DATE 
-        ORDER BY fecha_programada ASC LIMIT 1
-      `);
-    }
+    // 1. Buscamos sesión marcada como activa O programada para YA (hora actual >= hora programada)
+    const r = await pool.query(`
+      SELECT * FROM sesiones_clase 
+      WHERE activa = true 
+      OR (activa = false AND fecha_programada <= NOW() AND fecha_programada::date = CURRENT_DATE)
+      ORDER BY activa DESC, fecha_programada DESC 
+      LIMIT 1
+    `);
 
     if (r.rows.length === 0) return res.status(404).json({ error: 'No hay sesión activa' });
     res.json({ sesion: r.rows[0] });
@@ -140,8 +136,8 @@ app.put('/api/sesiones/:id/token', async (req, res) => {
   const { id } = req.params;
   const token = generateQrToken(id);
   try {
-    await pool.query('UPDATE sesiones_clase SET token_qr = $1 WHERE id = $2', [token, id]);
-    res.json({ token });
+    const r = await pool.query('UPDATE sesiones_clase SET token_qr = $1 WHERE id = $2 RETURNING *', [token, id]);
+    res.json({ sesion: r.rows[0] });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

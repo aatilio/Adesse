@@ -1,4 +1,4 @@
-# ADESE 🎓
+# ADESE 🎓 `v1.5.0`
 
 Una aplicación web moderna diseñada para registrar, controlar y gestionar de manera interactiva la asistencia de estudiantes en tiempo real. 
 

@@ -15,6 +15,7 @@ import {
   UserPlus,
   X,
   Edit,
+  Search,
 } from "lucide-react";
 import { api } from "../api/client";
 import { ROL } from "../constants/roles";
@@ -64,6 +65,7 @@ export default function TeacherPage({ user, onLogout }) {
     limite_tarde: ""
   });
   const [confirmDeleteId, setConfirmDeleteId] = useState(null);
+  const [searchHistorial, setSearchHistorial] = useState("");
 
   useEffect(() => {
     if (config) {
@@ -121,6 +123,24 @@ export default function TeacherPage({ user, onLogout }) {
       api.getConfiguracion().then((res) => setConfig(res.config));
     }
   }, [activeTab, cursoActivo]);
+
+  // ── Auto-refresh QR Token every 60s ─────────────────────
+  useEffect(() => {
+    let interval;
+    if (sesion && sesion.activa) {
+      interval = setInterval(async () => {
+        try {
+          const res = await api.refrescarToken(sesion.id);
+          if (res.sesion) setSesion(res.sesion);
+        } catch (err) {
+          console.error("Error al refrescar token:", err.message);
+        }
+      }, 60000);
+    }
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [sesion?.id, sesion?.activa]);
 
   // ── Actions ─────────────────────────────────────────────
   const crearCurso = async (e) => {
@@ -720,43 +740,30 @@ export default function TeacherPage({ user, onLogout }) {
               (!sesion || sesion.curso_id !== cursoActivo?.id ? (
                 <div
                   className="card"
-                  style={{ maxWidth: 480, margin: "0 auto" }}
+                  style={{ 
+                    maxWidth: 480, 
+                    margin: "0 auto", 
+                    textAlign: "center", 
+                    padding: "3rem 1.5rem",
+                    border: "2px dashed var(--gray-200)",
+                    background: "var(--gray-50)",
+                    borderRadius: "24px"
+                  }}
                 >
-                  <div className="card-title">
-                    <Plus size={18} /> Nueva Sesión Rápida
+                  <Calendar size={48} style={{ margin: "0 auto 1.5rem", color: "var(--primary)", opacity: 0.5 }} />
+                  <div className="card-title" style={{ justifyContent: "center", fontSize: "1.2rem" }}>
+                    No hay una sesión activa
                   </div>
-                  <div className="card-subtitle">
-                    Inicia una sesión de clase en vivo con código QR para{" "}
-                    {cursoActivo.nombre}.
-                  </div>
-                  <form onSubmit={crearSesionLive}>
-                    <div className="form-group">
-                      <label className="form-label">Nombre de la clase</label>
-                      <input
-                        className="form-input"
-                        type="text"
-                        autoFocus
-                        value={nombreClase}
-                        onChange={(e) => setNombre(e.target.value)}
-                        placeholder="Ej: Sesión 5 - Regresión"
-                      />
-                    </div>
-                    <div style={{ marginTop: "1.5rem" }}>
-                      <button
-                        className="btn btn-primary"
-                        type="submit"
-                        disabled={loading || !nombreClase.trim()}
-                      >
-                        {loading ? (
-                          <div className="spinner" />
-                        ) : (
-                          <>
-                            <Plus size={16} /> Iniciar Sesión Live
-                          </>
-                        )}
-                      </button>
-                    </div>
-                  </form>
+                  <p style={{ fontSize: "0.95rem", color: "var(--gray-500)", marginBottom: "2rem", lineHeight: "1.6" }}>
+                    Para generar el código QR y recibir asistencias, debes iniciar una clase programada desde la pestaña de <strong>Clases</strong>.
+                  </p>
+                  <button 
+                    className="btn btn-primary" 
+                    onClick={() => setActiveTab("clases")}
+                    style={{ margin: "0 auto", width: "auto", padding: "0.8rem 2.5rem", fontSize: "0.9rem" }}
+                  >
+                    <Calendar size={16} style={{marginRight: '8px'}} /> Ir a Mis Clases
+                  </button>
                 </div>
               ) : (
                 <div className="teacher-live-grid">
@@ -1112,12 +1119,30 @@ export default function TeacherPage({ user, onLogout }) {
                 className="card"
                 style={{ maxWidth: "100%", overflow: "hidden" }}
               >
-                <div className="card-title">
-                  Matriz de Asistencias — {cursoActivo.nombre}
-                </div>
-                <div className="card-subtitle">
-                  Vista acumulada estilo hoja de cálculo. Clic en la celda para
-                  cambiar estado.
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem', marginBottom: '1rem' }}>
+                  <div>
+                    <div className="card-title">Matriz de Asistencias — {cursoActivo.nombre}</div>
+                    <div className="card-subtitle">
+                      Vista acumulada estilo hoja de cálculo. Clic en la celda para cambiar estado.
+                    </div>
+                  </div>
+                  <div style={{ position: 'relative', width: '100%', maxWidth: '280px' }}>
+                    <Search size={16} style={{ 
+                      position: 'absolute', 
+                      left: '12px', 
+                      top: '50%', 
+                      transform: 'translateY(-50%)', 
+                      color: 'var(--gray-400)' 
+                    }} />
+                    <input 
+                      type="text" 
+                      placeholder="Buscar alumno o código..." 
+                      className="form-input"
+                      value={searchHistorial}
+                      onChange={e => setSearchHistorial(e.target.value)}
+                      style={{ paddingLeft: '38px', height: '38px', fontSize: '0.85rem' }}
+                    />
+                  </div>
                 </div>
 
                 {historialGen.length === 0 ? (
@@ -1169,10 +1194,15 @@ export default function TeacherPage({ user, onLogout }) {
                         </tr>
                       </thead>
                       <tbody>
-                        {estudiantesCurso.map((est, i) => {
-                          const recs = historialGen.filter(
-                            (h) => h.estudiante_id === est.id,
-                          );
+                        {estudiantesCurso
+                          .filter(est => 
+                            est.nombre_completo.toLowerCase().includes(searchHistorial.toLowerCase()) ||
+                            est.codigo.toLowerCase().includes(searchHistorial.toLowerCase())
+                          )
+                          .map((est, i) => {
+                            const recs = historialGen.filter(
+                              (h) => h.estudiante_id === est.id,
+                            );
                           const points = recs.reduce((acc, h) => {
                             if (h.estado === "Puntual") return acc + 2;
                             if (h.estado === "Presente") return acc + 1;
