@@ -8,9 +8,16 @@ const request = async (method, path, body) => {
   if (body) opts.body = JSON.stringify(body);
 
   const res = await fetch(`${API}${path}`, opts);
-  const data = await res.json();
+  const text = await res.text();
+  let data;
+  try {
+    data = JSON.parse(text);
+  } catch (e) {
+    console.error(`Error parsing JSON for ${method} ${path}. Response:`, text.slice(0, 100));
+    throw new Error(`Invalid JSON response from server: ${text.slice(0, 20)}...`);
+  }
 
-  if (!res.ok) throw new Error(data.error || 'Error desconocido');
+  if (!res.ok) throw new Error(data?.error || 'Error desconocido');
   return data;
 };
 
@@ -40,6 +47,11 @@ export const api = {
   updateEstudiante: (id, payload)    => request('PUT', `/api/estudiantes/${id}`, payload),
   getEstudianteCursos: (id)          => request('GET', `/api/estudiantes/${id}/cursos`),
 
+  // Usuarios (CRUD completo)
+  getUsuarios:     ()                => request('GET', '/api/usuarios'),
+  crearUsuario:    (datos)           => request('POST', '/api/usuarios', datos),
+  deleteUsuario:   (id)              => request('DELETE', `/api/usuarios/${id}`),
+
   // Configuración
   getConfiguracion:    ()            => request('GET', '/api/configuracion'),
   updateConfiguracion: (datos)       => request('PUT', '/api/configuracion', datos),
@@ -61,4 +73,10 @@ export const api = {
 
   // Cursos → Historial
   getCursoHistorial:      (cursoId)              => request('GET', `/api/cursos/${cursoId}/historial`),
+
+  // Estados de Asistencia
+  getEstados:             ()                     => request('GET', '/api/estados'),
+  crearEstado:            (datos)                => request('POST', '/api/estados', datos),
+  updateEstado:           (id, datos)            => request('PUT', `/api/estados/${id}`, datos),
+  deleteEstado:           (id)                   => request('DELETE', `/api/estados/${id}`),
 };

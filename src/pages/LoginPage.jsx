@@ -1,8 +1,11 @@
 import { useState } from "react";
-import { GraduationCap, ChevronRight, Eye, EyeOff } from "lucide-react";
+import { ChevronRight, Eye, EyeOff } from "lucide-react";
 import { api } from "../api/client";
 import { toast } from "../components/Toast";
 import { mapRolToUiRole } from "../constants/roles";
+import appLogo from "../assets/ac-d.svg";
+
+import Footer from "../components/Footer";
 
 export default function LoginPage({ onLogin }) {
   const [codigo, setCodigo] = useState("");
@@ -34,12 +37,14 @@ export default function LoginPage({ onLogin }) {
     <div className="login-screen">
       <div className="login-card">
         {/* Logo */}
-        <div className="login-logo" style={{ textAlign: "center" }}>
-          <div className="login-logo-icon">
-            <GraduationCap size={32} strokeWidth={2.5} />
-          </div>
-          <div className="login-logo-title" style={{ margin: "0.5rem 0 0" }}>
-            ADESE
+        <div className="login-logo" style={{ textAlign: "center", marginBottom: '1.5rem' }}>
+          <img 
+            src={appLogo} 
+            alt="Adese Logo" 
+            style={{ width: '70px', height: 'auto', marginBottom: '-0.8rem', display: 'block', margin: '0 auto' }} 
+          />
+          <div className="login-logo-title" style={{ margin: "0", fontSize: '2rem' }}>
+            Adese
           </div>
         </div>
 
@@ -102,35 +107,7 @@ export default function LoginPage({ onLogin }) {
           </div>
         </form>
 
-        <div
-          style={{
-            fontSize: "11px",
-            color: "var(--gray-400)",
-            textAlign: "center",
-            marginTop: "2rem",
-            lineHeight: "1.6",
-            opacity: 0.8
-          }}
-        >
-          <div>
-            &copy; {new Date().getFullYear()}{" "}
-            <a href="./" style={{ color: "var(--gray-600)", textDecoration: "none", fontWeight: "700" }}>
-              ADESE
-            </a>
-            {" • "} `v1.5.0`
-          </div>
-          <div style={{ marginTop: "4px" }}>
-            Desarrollado con ❤️ por{" "}
-            <a
-              href="https://alan.arahocorp.com/"
-              target="_blank"
-              rel="noopener noreferrer"
-              style={{ color: "var(--primary)", fontWeight: "600", textDecoration: "none" }}
-            >
-              Alan C.A.
-            </a>
-          </div>
-        </div>
+        <Footer />
       </div>
     </div>
   );
