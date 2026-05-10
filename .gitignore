@@ -20,12 +20,13 @@ pgdata/
 .env.production.local
 # Base de datos (Ignorar scripts con datos reales)
 backend/init.sql
+backend/init_unified.sql
+backend/asistencias_rows.sql
+backend/sesiones_clase_rows.sql
+backend/migration_v2.sql
+backend/test_db.js
+backend/*.sql
 pgdata/
-postgres-data/
-*.db
-*.sqlite
-data/*.sql
-dump.sql
 
 # IDE and OS
 .vscode/
