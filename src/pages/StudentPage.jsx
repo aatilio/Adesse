@@ -256,7 +256,15 @@ export default function StudentPage({ user, onLogout }) {
                   icon: History,
                   onClick: () => setActiveTab("historial"),
                   active: activeTab === "historial"
-                }
+                },
+                ...(cursoActivo?.nombre?.toLowerCase().includes('econometría') ? [
+                  {
+                    label: "Estimador",
+                    icon: BarChart3,
+                    onClick: () => setActiveTab("econometria"),
+                    active: activeTab === "econometria"
+                  }
+                ] : [])
               ] : []
             }
           />
@@ -330,26 +338,7 @@ export default function StudentPage({ user, onLogout }) {
               </div>
             )}
 
-            {/* Econometrics Tool Card */}
-            <div style={{ marginTop: "2rem" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", marginBottom: "1rem" }}>
-                <BarChart3 size={24} style={{ color: "var(--primary)" }} />
-                <h2 style={{ fontSize: "1.2rem", margin: 0, color: "var(--gray-800)" }}>Herramientas</h2>
-              </div>
-              <div
-                className="card"
-                onClick={() => setViewMode("econometrics")}
-                style={{ cursor: "pointer", display: "flex", alignItems: "center", gap: "1rem" }}
-              >
-                <div style={{ width: 42, height: 42, borderRadius: 12, background: "linear-gradient(135deg, #3b82f6, #7c3aed)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                  <BarChart3 size={22} color="white" />
-                </div>
-                <div>
-                  <h3 style={{ fontSize: "1rem", margin: 0, color: "var(--gray-800)", fontWeight: 700 }}>Regresión Econométrica</h3>
-                  <p style={{ fontSize: "0.75rem", margin: 0, color: "var(--gray-400)" }}>MCO · Heterocedasticidad · Intervalos de Confianza</p>
-                </div>
-              </div>
-            </div>
+            {/* Econometrics Tool Card Removed */}
           </div>
         ) : (
           <div
@@ -402,10 +391,22 @@ export default function StudentPage({ user, onLogout }) {
                 >
                   <History size={16} /> Historial
                 </button>
+                {cursoActivo?.nombre?.toLowerCase().includes('econometría') && (
+                  <button
+                    className={`tab ${activeTab === "econometria" ? "active" : ""}`}
+                    onClick={() => setActiveTab("econometria")}
+                  >
+                    <BarChart3 size={16} /> Estimador
+                  </button>
+                )}
               </div>
             </div>
 
-            {activeTab === "historial" ? (
+            {activeTab === "econometria" ? (
+              <div style={{ background: 'white', padding: '1.5rem', borderRadius: '12px', boxShadow: 'none' }}>
+                <EconometricsPage onBack={() => setActiveTab("marcar")} />
+              </div>
+            ) : activeTab === "historial" ? (
               <div className="attendance-list">
                 <h3
                   style={{
