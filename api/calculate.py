@@ -9,9 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import numpy as np
 import pandas as pd
-import statsmodels.api as sm
-from statsmodels.stats.diagnostic import het_breuschpagan
-from scipy.stats import norm
+from scipy.stats import norm, t, chi2
 import math
 import traceback
 
@@ -101,54 +99,86 @@ async def calculate(req: CalculateRequest):
         # --- 2. Add constant (intercept column) ---
         X_const = sm.add_constant(X_mat)
 
-        # --- 3. Initial OLS for Breusch-Pagan test ---
+        # --- 3. Manual OLS ---
+        X_arr = X_const.values
+        y_arr = y_vec.values
+
         try:
-            model_ols = sm.OLS(y_vec, X_const).fit()
-        except Exception as e:
+            XTX = X_arr.T @ X_arr
+            XTX_inv = np.linalg.inv(XTX)
+            beta = XTX_inv @ X_arr.T @ y_arr
+        except np.linalg.LinAlgError:
             raise HTTPException(
                 status_code=400,
-                detail=f"Error: Alta multicolinealidad o matriz singular detectada. {str(e)}",
+                detail="Error: Alta multicolinealidad o matriz singular detectada.",
             )
 
-        residuals = model_ols.resid
+        y_pred = X_arr @ beta
+        residuals = y_arr - y_pred
 
-        # --- 4. Breusch-Pagan heteroscedasticity test ---
+        # --- 4. Breusch-Pagan test ---
+        y_bp = residuals**2
+        y_bp_mean = np.mean(y_bp)
         try:
-            bp_lm, bp_pvalue, _, _ = het_breuschpagan(residuals, X_const)
+            beta_bp = XTX_inv @ X_arr.T @ y_bp
+            y_bp_pred = X_arr @ beta_bp
+            ss_total_bp = np.sum((y_bp - y_bp_mean) ** 2)
+            ss_resid_bp = np.sum((y_bp - y_bp_pred) ** 2)
+            r_sq_bp = 1 - (ss_resid_bp / ss_total_bp) if ss_total_bp > 0 else 0.0
+            bp_lm = n * r_sq_bp
+            bp_pvalue = 1 - chi2.cdf(bp_lm, df=k)
         except Exception:
-            bp_pvalue = 1.0  # Assume homoscedasticity if test fails
+            bp_pvalue = 1.0
 
         is_hetero = bp_pvalue < 0.05
 
-        # --- 5. Final model based on diagnostics ---
+        # --- 5. Variance-Covariance Matrix ---
         if is_hetero:
-            try:
-                model_final = sm.OLS(y_vec, X_const).fit(cov_type="HC3")
-            except Exception:
-                model_final = model_ols
+            # HC3
+            H_diag = np.sum(X_arr * (X_arr @ XTX_inv), axis=1)
+            leverage_factor = np.clip(1 - H_diag, 0.001, 1.0)
+            omega_diag = residuals**2 / (leverage_factor**2)
+            X_omega = X_arr * omega_diag[:, np.newaxis]
+            XT_Omega_X = X_omega.T @ X_arr
+            var_cov = XTX_inv @ XT_Omega_X @ XTX_inv
             se_type = "Robusto (HC3)"
         else:
-            model_final = model_ols
+            # Conventional
+            sigma_sq = np.sum(residuals**2) / (n - k - 1)
+            var_cov = XTX_inv * sigma_sq
             se_type = "Convencional (OLS)"
 
-        # --- 6. Build coefficient results ---
-        alpha = 1 - req.confidence
-        conf_intervals = model_final.conf_int(alpha=alpha)
+        se = np.sqrt(np.diag(var_cov))
+        t_stats = beta / se
+        p_values = 2 * (1 - t.cdf(np.abs(t_stats), df=n - k - 1))
 
+        # Confidence intervals
+        alpha = 1 - req.confidence
+        t_crit = t.ppf(1 - alpha / 2, df=n - k - 1)
+        ci_lower = beta - t_crit * se
+        ci_upper = beta + t_crit * se
+
+        # R-squared
+        y_mean = np.mean(y_arr)
+        ss_total = np.sum((y_arr - y_mean) ** 2)
+        ss_residual = np.sum(residuals**2)
+        r_squared = 1 - (ss_residual / ss_total)
+        r_squared_adj = 1 - ((1 - r_squared) * (n - 1) / (n - k - 1))
+
+        # --- 6. Build coefficient results ---
         coefficients = []
-        param_names = list(X_const.columns)
+        param_names = ["Intercepto (β₀)"] + [xv.name for xv in req.x_vars]
         for i, name in enumerate(param_names):
-            label = "Intercepto (β₀)" if name == "const" else name
-            coef_val = float(model_final.params.iloc[i])
-            se_val = float(model_final.bse.iloc[i])
-            t_val = float(model_final.tvalues.iloc[i])
-            p_val = float(model_final.pvalues.iloc[i])
-            ci_lo = float(conf_intervals.iloc[i, 0])
-            ci_hi = float(conf_intervals.iloc[i, 1])
+            coef_val = float(beta[i])
+            se_val = float(se[i])
+            t_val = float(t_stats[i])
+            p_val = float(p_values[i])
+            ci_lo = float(ci_lower[i])
+            ci_hi = float(ci_upper[i])
 
             coefficients.append(
                 CoefficientResult(
-                    name=label,
+                    name=name,
                     coef=coef_val,
                     std_err=se_val,
                     t_stat=t_val,
@@ -192,8 +222,8 @@ async def calculate(req: CalculateRequest):
 
         return CalculateResponse(
             n=n,
-            r_squared=float(model_final.rsquared),
-            r_squared_adj=float(model_final.rsquared_adj),
+            r_squared=float(r_squared),
+            r_squared_adj=float(r_squared_adj),
             se_type=se_type,
             hetero_test_pvalue=float(bp_pvalue),
             is_heteroscedastic=is_hetero,
