@@ -9,9 +9,21 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import numpy as np
 import pandas as pd
-from scipy.stats import norm, t, chi2
 import math
 import traceback
+
+def norm_cdf(x):
+    return 0.5 * (1.0 + math.erf(x / math.sqrt(2.0)))
+
+def norm_pdf(x):
+    return (1.0 / math.sqrt(2.0 * math.pi)) * math.exp(-0.5 * x**2)
+
+def chi2_sf(x, df):
+    if x <= 0: return 1.0
+    term1 = x / df
+    term2 = 2.0 / (9.0 * df)
+    z = (term1**(1.0/3.0) - (1.0 - term2)) / math.sqrt(term2)
+    return 1.0 - norm_cdf(z)
 
 app = FastAPI()
 
@@ -126,7 +138,7 @@ async def calculate(req: CalculateRequest):
             ss_resid_bp = np.sum((y_bp - y_bp_pred) ** 2)
             r_sq_bp = 1 - (ss_resid_bp / ss_total_bp) if ss_total_bp > 0 else 0.0
             bp_lm = n * r_sq_bp
-            bp_pvalue = 1 - chi2.cdf(bp_lm, df=k)
+            bp_pvalue = chi2_sf(bp_lm, k)
         except Exception:
             bp_pvalue = 1.0
 
@@ -150,11 +162,14 @@ async def calculate(req: CalculateRequest):
 
         se = np.sqrt(np.diag(var_cov))
         t_stats = beta / se
-        p_values = 2 * (1 - t.cdf(np.abs(t_stats), df=n - k - 1))
+        p_values = np.array([2 * (1.0 - norm_cdf(abs(ts))) for ts in t_stats])
 
         # Confidence intervals
         alpha = 1 - req.confidence
-        t_crit = t.ppf(1 - alpha / 2, df=n - k - 1)
+        if req.confidence == 0.90: t_crit = 1.645
+        elif req.confidence == 0.99: t_crit = 2.576
+        else: t_crit = 1.96 # 0.95
+        
         ci_lower = beta - t_crit * se
         ci_upper = beta + t_crit * se
 
@@ -213,12 +228,12 @@ async def calculate(req: CalculateRequest):
         # --- 8. Gaussian curve data ---
         z_values = np.linspace(-4.0, 4.0, 200)
         gaussian_curve = [
-            {"z": round(float(z), 4), "density": round(float(norm.pdf(z)), 6)}
+            {"z": round(float(z), 4), "density": round(float(norm_pdf(z)), 6)}
             for z in z_values
         ]
 
         # Critical value for the confidence level
-        critical_value = float(norm.ppf(1 - alpha / 2))
+        critical_value = float(t_crit)
 
         return CalculateResponse(
             n=n,
