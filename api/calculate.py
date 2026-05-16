@@ -166,7 +166,6 @@ async def calculate(req: CalculateRequest):
         p_values = np.array([2 * (1.0 - norm_cdf(abs(ts))) for ts in t_stats])
 
         # Confidence intervals
-        alpha = 1 - req.confidence
         if req.confidence == 0.90: t_crit = 1.645
         elif req.confidence == 0.99: t_crit = 2.576
         else: t_crit = 1.96 # 0.95
