@@ -1,6 +1,11 @@
 {
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
+  "functions": {
+    "api/calculate.py": {
+      "excludeFiles": ["src/**", "backend/**", "public/**"]
+    }
+  },
   "rewrites": [
     {
       "source": "/api/calculate",
