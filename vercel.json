@@ -3,7 +3,7 @@
   "outputDirectory": "dist",
   "functions": {
     "api/calculate.py": {
-      "excludeFiles": ["src/**", "backend/**", "public/**"]
+      "excludeFiles": "src/**"
     }
   },
   "rewrites": [
