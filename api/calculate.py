@@ -212,7 +212,6 @@ async def calculate(req: CalculateRequest):
             first_x_name = req.x_vars[0].name
             if first_x_name in X_mat.columns:
                 x_col = X_mat[first_x_name]
-                y_pred = model_final.fittedvalues
 
                 scatter_data = [
                     {"x": float(x_col.iloc[j]), "y": float(y_vec.iloc[j])}
@@ -222,7 +221,7 @@ async def calculate(req: CalculateRequest):
                 # Sort for the fitted line
                 sorted_idx = x_col.argsort()
                 fitted_line = [
-                    {"x": float(x_col.iloc[j]), "yhat": float(y_pred.iloc[j])}
+                    {"x": float(x_col.iloc[j]), "yhat": float(y_pred[j])}
                     for j in sorted_idx
                 ]
 
