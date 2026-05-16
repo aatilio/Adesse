@@ -503,6 +503,17 @@ app.delete('/api/cursos/:cursoId/estudiantes/:estudianteId', async (req, res) =>
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+// GET /api/sesiones/activa
+app.get('/api/sesiones/activa', async (req, res) => {
+  try {
+    const r = await pool.query('SELECT * FROM sesiones_clase WHERE activa = true LIMIT 1');
+    if (r.rows.length === 0) {
+      return res.json({ sesion: null });
+    }
+    res.json({ sesion: r.rows[0] });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 // GET /api/cursos/:id/sesiones
 app.get('/api/cursos/:id/sesiones', async (req, res) => {
   try {

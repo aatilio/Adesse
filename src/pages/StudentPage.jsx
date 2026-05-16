@@ -10,6 +10,7 @@ import {
   Radio,
   Library,
   User,
+  BarChart3,
 } from "lucide-react";
 import { Html5Qrcode } from "html5-qrcode";
 import { api } from "../api/client";
@@ -17,11 +18,12 @@ import { toast } from "../components/Toast";
 import appLogo from "../assets/ac-d.svg";
 import UserMenu from "../components/UserMenu";
 import Footer from "../components/Footer";
+import EconometricsPage from "./app";
 
 const STEPS = { SELECT: "select", SCANNING: "scanning", DONE: "done" };
 
 export default function StudentPage({ user, onLogout }) {
-  const [viewMode, setViewMode] = useState("dashboard"); // dashboard | curso
+  const [viewMode, setViewMode] = useState("dashboard"); // dashboard | curso | econometrics
   const [cursos, setCursos] = useState([]);
   const [cursoActivo, setCursoActivo] = useState(null);
   const [sesionActiva, setSesionActiva] = useState(null);
@@ -262,7 +264,9 @@ export default function StudentPage({ user, onLogout }) {
       </div>
 
       <div className="page-body" style={{ width: "100%", padding: "1rem" }}>
-        {viewMode === "dashboard" ? (
+        {viewMode === "econometrics" ? (
+          <EconometricsPage onBack={() => setViewMode("dashboard")} />
+        ) : viewMode === "dashboard" ? (
           <div>
             <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", marginBottom: "1.5rem" }}>
               <Library size={24} style={{ color: "var(--primary)" }} />
@@ -325,6 +329,27 @@ export default function StudentPage({ user, onLogout }) {
                 ))}
               </div>
             )}
+
+            {/* Econometrics Tool Card */}
+            <div style={{ marginTop: "2rem" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", marginBottom: "1rem" }}>
+                <BarChart3 size={24} style={{ color: "var(--primary)" }} />
+                <h2 style={{ fontSize: "1.2rem", margin: 0, color: "var(--gray-800)" }}>Herramientas</h2>
+              </div>
+              <div
+                className="card"
+                onClick={() => setViewMode("econometrics")}
+                style={{ cursor: "pointer", display: "flex", alignItems: "center", gap: "1rem" }}
+              >
+                <div style={{ width: 42, height: 42, borderRadius: 12, background: "linear-gradient(135deg, #3b82f6, #7c3aed)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                  <BarChart3 size={22} color="white" />
+                </div>
+                <div>
+                  <h3 style={{ fontSize: "1rem", margin: 0, color: "var(--gray-800)", fontWeight: 700 }}>Regresión Econométrica</h3>
+                  <p style={{ fontSize: "0.75rem", margin: 0, color: "var(--gray-400)" }}>MCO · Heterocedasticidad · Intervalos de Confianza</p>
+                </div>
+              </div>
+            </div>
           </div>
         ) : (
           <div
