@@ -109,7 +109,8 @@ async def calculate(req: CalculateRequest):
             )
 
         # --- 2. Add constant (intercept column) ---
-        X_const = sm.add_constant(X_mat)
+        X_const = X_mat.copy()
+        X_const.insert(0, 'const', 1.0)
 
         # --- 3. Manual OLS ---
         X_arr = X_const.values
